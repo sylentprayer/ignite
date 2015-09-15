@@ -433,19 +433,24 @@ mixin form-row-custom(lblClasses, fieldClasses, dataSource)
                                     .input-tip
                                         input#newGroupName.form-control(type='text' ng-model='field.newGroupName' placeholder='Group name' on-enter='tableGroupSaveVisible(field, -1) && tableGroupSave(field, -1)' on-escape='tableReset()')
 
-mixin main-table(title, rows, focusId, click, rowTemplate)
+mixin main-table(title,  rows, focusId, click, rowTemplate)
     .padding-dflt(ng-show='#{rows} && #{rows}.length > 0')
-        lable.labelHeader #{title}
         table.links(st-table='displayedRows' st-safe-src='#{rows}')
-            tbody
-                tr(ng-repeat='row in displayedRows track by row._id')
-                    td
-                        a(ng-class='{active: row._id == selectedItem._id}' on-click-focus=focusId ng-click=click) #{rowTemplate}
-            tfoot
+            thead
                 tr
-                    td.text-right
-                        div(st-pagination st-items-by-page='10' st-displayed-pages='5')
-
+                    th
+                        lable.labelHeader.labelFormField #{title}
+                        .col-sm-3.pull-right(style='padding: 0')
+                            input.form-control(type='text' st-search='' placeholder='Filter #{rows}...')
+                tbody
+                    tr
+                        td
+                            .scrollable-y(style='max-height: 200px')
+                                table
+                                    tbody
+                                        tr(ng-repeat='row in displayedRows track by row._id')
+                                            td
+                                                a(ng-class='{active: row._id == selectedItem._id}' on-click-focus=focusId ng-click=click) #{rowTemplate}
 
 mixin groups(groups, dataSource)
     .panel.panel-default(ng-repeat='group in #{groups}' ng-click='triggerDigest=true' ng-hide='{{group.hide}}')
