@@ -111,7 +111,7 @@ public class AgentLauncher {
                 while (!Thread.interrupted()) {
                     AgentSocket agentSock = new AgentSocket(cfg, restExecutor);
 
-                    log.log(Level.FINE, "Connecting to: " + cfg.serverUri());
+                    log.log(Level.INFO, "Connecting to: " + cfg.serverUri());
 
                     URI uri = URI.create(cfg.serverUri());
 
