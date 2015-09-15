@@ -28,19 +28,6 @@ if (typeof window === 'undefined') {
 $generatorJava = {};
 
 /**
- * Convert some name to valid java name.
- *
- * @param prefix To append to java name.
- * @param name to convert.
- * @returns {string} Valid java name.
- */
-$generatorJava.toJavaName = function (prefix, name) {
-    var javaName = name ? name.replace(/[^A-Za-z_0-9]+/, '_') : 'dflt';
-
-    return prefix + javaName.charAt(0).toLocaleUpperCase() + javaName.slice(1);
-};
-
-/**
  * Translate some value to valid java code.
  *
  * @param val Value to convert.
@@ -51,11 +38,14 @@ $generatorJava.toJavaCode = function (val, type) {
     if (val == null)
         return 'null';
 
+    if (type == 'class')
+        return val + '.class';
+
     if (type == 'float')
         return val + 'f';
 
-    if (type == 'class')
-        return val + '.class';
+    if (type == 'path')
+        return '"' + val.replace('\\', '\\\\') + '"';
 
     if (type)
         return type + '.' + val;
@@ -71,10 +61,11 @@ $generatorJava.toJavaCode = function (val, type) {
 
 /**
  * @param propName Property name
+ * @param setterName Optional concrete setter name.
  * @returns Property setter with name by java conventions.
  */
-$generatorJava.setterName = function (propName) {
-    return $generatorJava.toJavaName('set', propName);
+$generatorJava.setterName = function (propName, setterName) {
+    return setterName ? setterName : $commonUtils.toJavaName('set', propName);
 };
 
 /**
@@ -129,20 +120,28 @@ $generatorJava.declareVariable = function (res, varNew, varName, varFullType, va
  * @param varName Variable name.
  * @param obj Source object with data.
  * @param propName Property name to take from source object.
- * @param enumType Optional info about property datatype.
+ * @param dataType Optional info about property data type.
  * @param setterName Optional special setter name.
+ * @param dflt Optional default value.
  */
-$generatorJava.property = function (res, varName, obj, propName, enumType, setterName) {
+$generatorJava.property = function (res, varName, obj, propName, dataType, setterName, dflt) {
     var val = obj[propName];
 
     if ($commonUtils.isDefined(val)) {
-        res.emptyLineIfNeeded();
+        var hasDflt = $commonUtils.isDefined(dflt);
 
-        res.line(varName + '.' + $generatorJava.setterName(setterName ? setterName : propName)
-            + '(' + $generatorJava.toJavaCode(val, enumType) + ');');
+        // Add to result if no default provided or value not equals to default.
+        if (!hasDflt || (hasDflt && val != dflt)) {
+            res.emptyLineIfNeeded();
+
+            res.line(varName + '.' + $generatorJava.setterName(propName, setterName)
+                + '(' + $generatorJava.toJavaCode(val, dataType) + ');');
+
+            return true;
+        }
     }
 
-    return val;
+    return false;
 };
 
 /**
@@ -172,7 +171,7 @@ $generatorJava.listProperty = function (res, varName, obj, propName, enumType, s
 
         res.importClass('java.util.Arrays');
 
-        res.append(varName + '.' + $generatorJava.setterName(setterName ? setterName : propName) + '(Arrays.asList(');
+        res.append(varName + '.' + $generatorJava.setterName(propName, setterName) + '(Arrays.asList(');
 
         for (var i = 0; i < val.length; i++) {
             if (i > 0)
@@ -194,7 +193,7 @@ $generatorJava.multiparamProperty = function (res, varName, obj, propName, type,
     if (val && val.length > 0) {
         res.emptyLineIfNeeded();
 
-        res.append(varName + '.' + $generatorJava.setterName(setterName ? setterName : propName) + '(');
+        res.append(varName + '.' + $generatorJava.setterName(propName, setterName) + '(');
 
         for (var i = 0; i < val.length; i++) {
             if (i > 0)
@@ -229,6 +228,10 @@ $generatorJava.beanProperty = function (res, varName, bean, beanPropName, beanVa
 
                         case 'float':
                             $generatorJava.property(res, beanVarName, bean, propName, 'float', descr.setterName);
+                            break;
+
+                        case 'path':
+                            $generatorJava.property(res, beanVarName, bean, propName, 'path', descr.setterName);
                             break;
 
                         case 'propertiesAsList':
@@ -410,12 +413,33 @@ $generatorJava.clusterAtomics = function (cluster, res) {
     if (!res)
         res = $generatorCommon.builder();
 
-    var atomicCfg = $generatorCommon.ATOMIC_CONFIGURATION;
+    var atomics = cluster.atomicConfiguration;
 
-    $generatorJava.beanProperty(res, 'cfg', cluster.atomicConfiguration, 'atomicConfiguration', 'atomicCfg',
-        atomicCfg.className, atomicCfg.fields);
+    if ($commonUtils.hasAtLeastOneProperty(atomics, ['cacheMode', 'atomicSequenceReserveSize', 'backups'])) {
+        res.startSafeBlock();
 
-    res.needEmptyLine = true;
+        $generatorJava.declareVariable(res, true, 'atomicCfg', 'org.apache.ignite.configuration.AtomicConfiguration');
+
+        $generatorJava.property(res, 'atomicCfg', atomics, 'cacheMode');
+
+        var cacheMode = atomics.cacheMode ? atomics.cacheMode : 'PARTITIONED';
+
+        var hasData = cacheMode != 'PARTITIONED';
+
+        hasData = $generatorJava.property(res, 'atomicCfg', atomics, 'atomicSequenceReserveSize') || hasData;
+
+        if (cacheMode == 'PARTITIONED')
+            hasData = $generatorJava.property(res, 'atomicCfg', atomics, 'backups') || hasData;
+
+        res.needEmptyLine = true;
+
+        res.line('cfg.setAtomicConfiguration(atomicCfg);');
+
+        res.needEmptyLine = true;
+
+        if (!hasData)
+            res.rollbackSafeBlock();
+    }
 
     return res;
 };
@@ -429,7 +453,7 @@ $generatorJava.clusterCommunication = function (cluster, res) {
     $generatorJava.property(res, 'cfg', cluster, 'networkSendRetryDelay');
     $generatorJava.property(res, 'cfg', cluster, 'networkSendRetryCount');
     $generatorJava.property(res, 'cfg', cluster, 'segmentCheckFrequency');
-    $generatorJava.property(res, 'cfg', cluster, 'waitForSegmentOnStart');
+    $generatorJava.property(res, 'cfg', cluster, 'waitForSegmentOnStart', null, null, false);
     $generatorJava.property(res, 'cfg', cluster, 'discoveryStartupDelay');
 
     res.needEmptyLine = true;
@@ -442,7 +466,7 @@ $generatorJava.clusterDeployment = function (cluster, res) {
     if (!res)
         res = $generatorCommon.builder();
 
-    $generatorJava.property(res, 'cfg', cluster, 'deploymentMode', 'DeploymentMode');
+    $generatorJava.property(res, 'cfg', cluster, 'deploymentMode', null, null, 'SHARED');
 
     res.needEmptyLine = true;
 
@@ -515,7 +539,7 @@ $generatorJava.clusterMarshaller = function (cluster, res) {
         $generatorJava.beanProperty(res, 'marshaller', marshaller[marshaller.kind], marshallerDesc.className, marshallerDesc.fields, true);
     }
 
-    $generatorJava.property(res, 'cfg', cluster, 'marshalLocalJobs');
+    $generatorJava.property(res, 'cfg', cluster, 'marshalLocalJobs', null, null, false);
     $generatorJava.property(res, 'cfg', cluster, 'marshallerCacheKeepAliveTime');
     $generatorJava.property(res, 'cfg', cluster, 'marshallerCacheThreadPoolSize');
 
@@ -547,7 +571,7 @@ $generatorJava.clusterP2p = function (cluster, res) {
     var p2pEnabled = cluster.peerClassLoadingEnabled;
 
     if ($commonUtils.isDefined(p2pEnabled)) {
-        $generatorJava.property(res, 'cfg', cluster, 'peerClassLoadingEnabled');
+        $generatorJava.property(res, 'cfg', cluster, 'peerClassLoadingEnabled', null, null, false);
 
         if (p2pEnabled) {
             $generatorJava.property(res, 'cfg', cluster, 'peerClassLoadingMissedResourcesCacheSize');
@@ -708,13 +732,13 @@ $generatorJava.cacheStore = function (cache, varName, res) {
         if (storeFactory) {
             var storeFactoryDesc = $generatorCommon.STORE_FACTORIES[cache.cacheStoreFactory.kind];
 
-            var sfVarName = $generatorJava.toJavaName('storeFactory', cache.name);
+            var sfVarName = $commonUtils.toJavaName('storeFactory', cache.name);
             var dsVarName = 'none';
 
             if (storeFactory.dialect) {
                 var dataSourceBean = storeFactory.dataSourceBean;
 
-                dsVarName = $generatorJava.toJavaName('dataSource', dataSourceBean);
+                dsVarName = $commonUtils.toJavaName('dataSource', dataSourceBean);
 
                 if (!_.contains(res.datasources, dataSourceBean)) {
                     res.datasources.push(dataSourceBean);
@@ -841,7 +865,7 @@ $generatorJava.metadataQueryFields = function (res, meta, fieldProperty) {
 
         res.needEmptyLine = true;
 
-        res.line('typeMeta.' + $generatorJava.toJavaName('set', fieldProperty) + '(' + fieldProperty + ');');
+        res.line('typeMeta.' + $commonUtils.toJavaName('set', fieldProperty) + '(' + fieldProperty + ');');
 
         res.needEmptyLine = true;
     }
@@ -919,7 +943,7 @@ $generatorJava.metadataDatabaseFields = function (res, meta, fieldProperty) {
                 + '));');
         });
 
-        res.line('typeMeta.' + $generatorJava.toJavaName('set', fieldProperty) + '(' + fieldProperty + ');');
+        res.line('typeMeta.' + $commonUtils.toJavaName('set', fieldProperty) + '(' + fieldProperty + ');');
 
         res.needEmptyLine = true;
     }
@@ -1046,7 +1070,7 @@ $generatorJava.clusterCaches = function (caches, res) {
         _.forEach(caches, function (cache) {
             res.emptyLineIfNeeded();
 
-            var cacheName = $generatorJava.toJavaName('cache', cache.name);
+            var cacheName = $commonUtils.toJavaName('cache', cache.name);
 
             $generatorJava.declareVariable(res, true, cacheName, 'org.apache.ignite.configuration.CacheConfiguration');
 
@@ -1125,8 +1149,6 @@ $generatorJava.cluster = function (cluster, javaClass, clientNearCfg) {
         $generatorJava.clusterCaches(cluster.caches, res);
 
         if (javaClass) {
-            res.needEmptyLine = true;
-
             res.line('return cfg;');
             res.endBlock('}');
             res.endBlock('}');

@@ -19,6 +19,7 @@
 if (typeof window === 'undefined') {
     _ = require('lodash');
 
+    $commonUtils = require('../../helpers/common-utils');
     $dataStructures = require('../../helpers/data-structures');
 }
 
@@ -57,10 +58,36 @@ $generatorCommon.builder = function () {
     var res = [];
 
     res.deep = 0;
-
+    res.needEmptyLine = false;
     res.lineStart = true;
-
     res.datasources = [];
+    res.imports = {};
+
+    res.safeDeep = 0;
+    res.safeNeedEmptyLine = false;
+    res.safeImports = {};
+    res.safeDatasources = [];
+    res.safePoint = -1;
+
+    res.startSafeBlock = function () {
+        res.safeDeep = this.deep;
+        this.safeNeedEmptyLine = this.needEmptyLine;
+        this.safeImports = _.cloneDeep(this.imports);
+        this.safeDatasources = this.datasources.slice();
+        this.safePoint = this.length;
+    };
+
+    res.rollbackSafeBlock = function () {
+        if (this.safePoint >= 0) {
+            this.splice(this.safePoint, this.length - this.safePoint);
+
+            this.deep = res.safeDeep;
+            this.needEmptyLine = this.safeNeedEmptyLine;
+            this.datasources = this.safeDatasources;
+            this.imports = this.safeImports;
+            this.safePoint = -1;
+        }
+    };
 
     res.asString = function() {
       return this.join('\n');
@@ -117,8 +144,6 @@ $generatorCommon.builder = function () {
         }
     };
 
-    res.imports = {};
-
     /**
      * Add class to imports.
      *
@@ -159,16 +184,6 @@ $generatorCommon.builder = function () {
     };
 
     return res;
-};
-
-// Atomic configuration code generation descriptor.
-$generatorCommon.ATOMIC_CONFIGURATION = {
-    className: 'org.apache.ignite.configuration.AtomicConfiguration',
-    fields: {
-        backups: null,
-        cacheMode: {type: 'enum', enumClass: 'org.apache.ignite.cache.CacheMode', dflt: 'PARTITIONED'},
-        atomicSequenceReserveSize: null
-    }
 };
 
 // Eviction policies code generation descriptors.
@@ -266,7 +281,7 @@ $generatorCommon.STORE_FACTORIES = {
 $generatorCommon.SWAP_SPACE_SPI = {
     className: 'org.apache.ignite.spi.swapspace.file.FileSwapSpaceSpi',
     fields: {
-        baseDirectory: null,
+        baseDirectory: {type: 'path'},
         readStripesNumber: null,
         maximumSparsity: {type: 'float'},
         maxWriteQueueSize: null,

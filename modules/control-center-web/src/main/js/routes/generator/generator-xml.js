@@ -59,6 +59,7 @@ $generatorXml.property = function (res, obj, propName, setterName, dflt) {
         if ($commonUtils.isDefined(val)) {
             var hasDflt = $commonUtils.isDefined(dflt);
 
+            // Add to result if no default provided or value not equals to default.
             if (!hasDflt || (hasDflt && val != dflt)) {
                 $generatorXml.element(res, 'property', 'name', setterName ? setterName : propName, 'value', $generatorXml.escape(val));
 
@@ -111,13 +112,11 @@ $generatorXml.beanProperty = function (res, bean, beanPropName, desc, createBean
     var props = desc.fields;
 
     if (bean && $commonUtils.hasProperty(bean, props)) {
-        var tmpRes = $generatorCommon.builder();
+        res.startSafeBlock();
 
-        tmpRes.deep = res.deep;
-
-        tmpRes.emptyLineIfNeeded();
-        tmpRes.startBlock('<property name="' + beanPropName + '">');
-        tmpRes.startBlock('<bean class="' + desc.className + '">');
+        res.emptyLineIfNeeded();
+        res.startBlock('<property name="' + beanPropName + '">');
+        res.startBlock('<bean class="' + desc.className + '">');
 
         var hasData = false;
 
@@ -127,13 +126,13 @@ $generatorXml.beanProperty = function (res, bean, beanPropName, desc, createBean
 
                 if (descr) {
                     if (descr.type == 'list') {
-                        $generatorXml.listProperty(tmpRes, bean, propName, descr.setterName);
+                        $generatorXml.listProperty(res, bean, propName, descr.setterName);
                     }
                     else if (descr.type == 'jdbcDialect') {
                         if (bean[propName]) {
-                            tmpRes.startBlock('<property name="' + propName + '">');
-                            tmpRes.line('<bean class="' + $generatorCommon.jdbcDialectClassName(bean[propName]) + '"/>');
-                            tmpRes.endBlock('</property>');
+                            res.startBlock('<property name="' + propName + '">');
+                            res.line('<bean class="' + $generatorCommon.jdbcDialectClassName(bean[propName]) + '"/>');
+                            res.endBlock('</property>');
 
                             hasData = true;
                         }
@@ -142,44 +141,41 @@ $generatorXml.beanProperty = function (res, bean, beanPropName, desc, createBean
                         var val = bean[propName];
 
                         if (val && val.length > 0) {
-                            tmpRes.startBlock('<property name="' + propName + '">');
-                            tmpRes.startBlock('<props>');
+                            res.startBlock('<property name="' + propName + '">');
+                            res.startBlock('<props>');
 
                             for (var i = 0; i < val.length; i++) {
                                 var nameAndValue = val[i];
 
                                 var eqIndex = nameAndValue.indexOf('=');
                                 if (eqIndex >= 0) {
-                                    tmpRes.line('<prop key="' + $generatorXml.escape(nameAndValue.substring(0, eqIndex)) + '">' +
+                                    res.line('<prop key="' + $generatorXml.escape(nameAndValue.substring(0, eqIndex)) + '">' +
                                         $generatorXml.escape(nameAndValue.substr(eqIndex + 1)) + '</prop>');
                                 }
                             }
 
-                            tmpRes.endBlock('</props>');
-                            tmpRes.endBlock('</property>');
+                            res.endBlock('</props>');
+                            res.endBlock('</property>');
 
                             hasData = true;
                         }
                     }
                     else {
-                        if ($generatorXml.property(tmpRes, bean, propName, descr.setterName, descr.dflt))
+                        if ($generatorXml.property(res, bean, propName, descr.setterName, descr.dflt))
                             hasData = true;
                     }
                 }
                 else
-                    if ($generatorXml.property(tmpRes, bean, propName))
+                    if ($generatorXml.property(res, bean, propName))
                         hasData = true;
             }
         }
 
-        tmpRes.endBlock('</bean>');
-        tmpRes.endBlock('</property>');
+        res.endBlock('</bean>');
+        res.endBlock('</property>');
 
-        if (hasData)
-            _.forEach(tmpRes, function (line) {
-                res.push(line);
-            });
-
+        if (!hasData)
+            res.rollbackSafeBlock();
     }
     else if (createBeanAlthoughNoProps) {
         res.emptyLineIfNeeded();
@@ -321,9 +317,35 @@ $generatorXml.clusterAtomics = function (cluster, res) {
     if (!res)
         res = $generatorCommon.builder();
 
-    $generatorXml.beanProperty(res, cluster.atomicConfiguration, 'atomicConfiguration', $generatorCommon.ATOMIC_CONFIGURATION);
+    var atomics = cluster.atomicConfiguration;
 
-    res.needEmptyLine = true;
+    if ($commonUtils.hasAtLeastOneProperty(atomics, ['cacheMode', 'atomicSequenceReserveSize', 'backups'])) {
+        res.startSafeBlock();
+
+        res.emptyLineIfNeeded();
+
+        res.startBlock('<property name="atomicConfiguration">');
+        res.startBlock('<bean class="org.apache.ignite.configuration.AtomicConfiguration">');
+
+        var cacheMode = atomics.cacheMode ? atomics.cacheMode : 'PARTITIONED';
+
+        var hasData = cacheMode != 'PARTITIONED';
+
+        $generatorXml.property(res, atomics, 'cacheMode');
+
+        hasData = $generatorXml.property(res, atomics, 'atomicSequenceReserveSize') || hasData;
+
+        if (cacheMode == 'PARTITIONED')
+            hasData = $generatorXml.property(res, atomics, 'backups') || hasData;
+
+        res.endBlock('</bean>');
+        res.endBlock('</property>');
+
+        res.needEmptyLine = true;
+
+        if (!hasData)
+            res.rollbackSafeBlock();
+    }
 
     return res;
 };
@@ -337,7 +359,7 @@ $generatorXml.clusterCommunication = function (cluster, res) {
     $generatorXml.property(res, cluster, 'networkSendRetryDelay');
     $generatorXml.property(res, cluster, 'networkSendRetryCount');
     $generatorXml.property(res, cluster, 'segmentCheckFrequency');
-    $generatorXml.property(res, cluster, 'waitForSegmentOnStart');
+    $generatorXml.property(res, cluster, 'waitForSegmentOnStart', null, false);
     $generatorXml.property(res, cluster, 'discoveryStartupDelay');
 
     res.needEmptyLine = true;
@@ -410,7 +432,7 @@ $generatorXml.clusterMarshaller = function (cluster, res) {
         res.needEmptyLine = true;
     }
 
-    $generatorXml.property(res, cluster, 'marshalLocalJobs');
+    $generatorXml.property(res, cluster, 'marshalLocalJobs', null, false);
     $generatorXml.property(res, cluster, 'marshallerCacheKeepAliveTime');
     $generatorXml.property(res, cluster, 'marshallerCacheThreadPoolSize');
 
@@ -442,7 +464,7 @@ $generatorXml.clusterP2p = function (cluster, res) {
     var p2pEnabled = cluster.peerClassLoadingEnabled;
 
     if ($commonUtils.isDefined(p2pEnabled)) {
-        $generatorXml.property(res, cluster, 'peerClassLoadingEnabled');
+        $generatorXml.property(res, cluster, 'peerClassLoadingEnabled', null, false);
 
         if (p2pEnabled) {
             $generatorXml.property(res, cluster, 'peerClassLoadingMissedResourcesCacheSize');

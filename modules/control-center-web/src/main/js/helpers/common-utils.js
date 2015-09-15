@@ -42,6 +42,34 @@ $commonUtils.hasProperty = function (obj, props) {
     return false;
 };
 
+/**
+ * @param obj Object to check.
+ * @param props Array of properties names.
+ * @returns {boolean} 'true' if
+ */
+$commonUtils.hasAtLeastOneProperty = function (obj, props) {
+    if (obj && props) {
+        return _.findIndex(props, function (prop) {
+                return $commonUtils.isDefined(obj[prop]);
+            }) >= 0;
+    }
+
+    return false;
+};
+
+/**
+ * Convert some name to valid java name.
+ *
+ * @param prefix To append to java name.
+ * @param name to convert.
+ * @returns {string} Valid java name.
+ */
+$commonUtils.toJavaName = function (prefix, name) {
+    var javaName = name ? name.replace(/[^A-Za-z_0-9]+/, '_') : 'dflt';
+
+    return prefix + javaName.charAt(0).toLocaleUpperCase() + javaName.slice(1);
+};
+
 $commonUtils.randomString = function (len) {
     var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     var possibleLen = possible.length;

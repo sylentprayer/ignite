@@ -274,7 +274,7 @@ controlCenterModule.controller('cachesController', [
                     $scope.$watch('backupItem', function (val) {
                         if (val) {
                             var metas = cacheMetadatas(val);
-                            var varName = 'cache';
+                            var varName = $commonUtils.toJavaName('cache', val.name);
 
                             $scope.preview.general.xml = $generatorXml.cacheMetadatas(metas, $generatorXml.cacheGeneral(val)).asString();
                             $scope.preview.general.java = $generatorJava.cacheMetadatas(metas, varName, $generatorJava.cacheGeneral(val, varName)).asString();
