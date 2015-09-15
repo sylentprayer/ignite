@@ -889,7 +889,7 @@ $generatorJava.metadataQueryFields = function (res, meta, fieldProperty) {
         $generatorJava.declareVariable(res, $generatorJava.needNewVariable(res, fieldProperty), fieldProperty, 'java.util.Map', 'java.util.LinkedHashMap', 'java.lang.String', 'java.lang.Class<?>');
 
         _.forEach(fields, function (field) {
-            res.line(fieldProperty + '.put("' + field.name + '", ' + res.importClass(field.className) + '.class);');
+            res.line(fieldProperty + '.put("' + field.name.toUpperCase() + '", ' + res.importClass(field.className) + '.class);');
         });
 
         res.needEmptyLine = true;
