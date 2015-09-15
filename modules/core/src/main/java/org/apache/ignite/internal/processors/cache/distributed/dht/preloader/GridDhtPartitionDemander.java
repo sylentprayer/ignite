@@ -193,7 +193,7 @@ public class GridDhtPartitionDemander {
      * @return {@code True} if topology changed.
      */
     private boolean topologyChanged(AffinityTopologyVersion topVer) {
-        return cctx.affinity().affinityTopologyVersion().topologyVersion() != topVer.topologyVersion();
+        return !cctx.affinity().affinityTopologyVersion().equals(topVer);
     }
 
     /**
