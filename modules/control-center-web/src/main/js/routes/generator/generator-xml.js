@@ -56,7 +56,7 @@ $generatorXml.property = function (res, obj, propName, setterName, dflt) {
     if ($commonUtils.isDefined(obj)) {
         var val = obj[propName];
 
-        if ($commonUtils.isDefined(val)) {
+        if ($commonUtils.isDefinedAndNotEmpty(val)) {
             var hasDflt = $commonUtils.isDefined(dflt);
 
             // Add to result if no default provided or value not equals to default.

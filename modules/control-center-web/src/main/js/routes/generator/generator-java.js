@@ -45,7 +45,7 @@ $generatorJava.toJavaCode = function (val, type) {
         return val + 'f';
 
     if (type == 'path')
-        return '"' + val.replace('\\', '\\\\') + '"';
+        return '"' + val.replace(/\\/g, '\\\\') + '"';
 
     if (type)
         return type + '.' + val;

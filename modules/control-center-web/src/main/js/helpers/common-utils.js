@@ -22,8 +22,21 @@ $commonUtils = {};
  * @param v Value to check.
  * @returns {boolean} 'true' if value defined.
  */
-$commonUtils.isDefined = function isDefined(v) {
+$commonUtils.isDefined = function (v) {
     return !(v === undefined || v === null);
+};
+
+/**
+ * @param v Value to check.
+ * @returns {boolean} 'true' if value defined and not empty string.
+ */
+$commonUtils.isDefinedAndNotEmpty = function (v) {
+    var definded = $commonUtils.isDefined(v);
+
+    if (definded && typeof(v) == 'string')
+        definded = v.length > 0;
+
+    return definded;
 };
 
 /**
