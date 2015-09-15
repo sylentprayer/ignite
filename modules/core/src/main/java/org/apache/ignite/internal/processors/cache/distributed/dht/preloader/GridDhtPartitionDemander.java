@@ -497,14 +497,8 @@ public class GridDhtPartitionDemander {
 
         final SyncFuture fut = syncFut;
 
-        if (!fut.topologyVersion().equals(topVer))
+        if (!fut.topologyVersion().equals(topVer))//will check topology changed at loop.
             return;
-
-        if (topologyChanged(topVer)) {
-            fut.cancel();
-
-            return;
-        }
 
         ClusterNode node = cctx.node(id);
 
