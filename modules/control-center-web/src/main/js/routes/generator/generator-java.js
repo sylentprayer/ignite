@@ -60,7 +60,7 @@ $generatorJava.toJavaCode = function (val, type) {
 };
 
 /**
- * @param propName Property name
+ * @param propName Property name.
  * @param setterName Optional concrete setter name.
  * @returns Property setter with name by java conventions.
  */
@@ -162,8 +162,17 @@ $generatorJava.classNameProperty = function (res, varName, obj, propName) {
     }
 };
 
-// Add list property.
-$generatorJava.listProperty = function (res, varName, obj, propName, enumType, setterName) {
+/**
+ * Add list property.
+ *
+ * @param res Resulting output with generated code.
+ * @param varName Variable name.
+ * @param obj Source object with data.
+ * @param propName Property name to take from source object.
+ * @param dataType Optional data type.
+ * @param setterName Optional setter name.
+ */
+$generatorJava.listProperty = function (res, varName, obj, propName, dataType, setterName) {
     var val = obj[propName];
 
     if (val && val.length > 0) {
@@ -177,7 +186,7 @@ $generatorJava.listProperty = function (res, varName, obj, propName, enumType, s
             if (i > 0)
                 res.append(', ');
 
-            res.append($generatorJava.toJavaCode(val[i], enumType));
+            res.append($generatorJava.toJavaCode(val[i], dataType));
         }
 
         res.line('));');
@@ -186,8 +195,17 @@ $generatorJava.listProperty = function (res, varName, obj, propName, enumType, s
     }
 };
 
-// Add multi-param property (setter with several arguments).
-$generatorJava.multiparamProperty = function (res, varName, obj, propName, type, setterName) {
+/**
+ * Add multi-param property (setter with several arguments).
+ *
+ * @param res Resulting output with generated code.
+ * @param varName Variable name.
+ * @param obj Source object with data.
+ * @param propName Property name to take from source object.
+ * @param dataType Optional data type.
+ * @param setterName Optional setter name.
+ */
+$generatorJava.multiparamProperty = function (res, varName, obj, propName, dataType, setterName) {
     var val = obj[propName];
 
     if (val && val.length > 0) {
@@ -199,13 +217,24 @@ $generatorJava.multiparamProperty = function (res, varName, obj, propName, type,
             if (i > 0)
                 res.append(', ');
 
-            res.append($generatorJava.toJavaCode(val[i], type));
+            res.append($generatorJava.toJavaCode(val[i], dataType));
         }
 
         res.line(');');
     }
 };
 
+/**
+ * Add complex bean.
+ * @param res Resulting output with generated code.
+ * @param varName Variable name.
+ * @param bean
+ * @param beanPropName
+ * @param beanVarName
+ * @param beanClass
+ * @param props
+ * @param createBeanAlthoughNoProps If 'true' then create empty bean.
+ */
 $generatorJava.beanProperty = function (res, varName, bean, beanPropName, beanVarName, beanClass, props, createBeanAlthoughNoProps) {
     if (bean && $commonUtils.hasProperty(bean, props)) {
         res.emptyLineIfNeeded();
