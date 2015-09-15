@@ -17,8 +17,8 @@
 
 // Controller for Metadata screen.
 controlCenterModule.controller('metadataController', [
-        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$copy', '$table', '$preview', '$stepConfirm',
-        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $copy, $table, $preview, $stepConfirm) {
+        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$copy', '$table', '$preview', '$stepConfirm', 'usSpinnerService',
+        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $copy, $table, $preview, $stepConfirm, usSpinnerService) {
             // Initialize the super class and extend it.
             angular.extend(this, $controller('save-remove', {$scope: $scope}));
 
@@ -275,19 +275,35 @@ controlCenterModule.controller('metadataController', [
                     });
             };
 
+            function _startSpin() {
+                usSpinnerService.spin('load-spinner');
+            }
+
+            function _stopSpin() {
+                usSpinnerService.stop('load-spinner');
+            }
+
             function _loadSchemas() {
+                _startSpin();
+
                 $http.post('/agent/schemas', $scope.preset)
                     .success(function (schemas) {
                         $scope.loadMeta.schemas = _.map(schemas, function (schema) { return {use: false, name: schema}});
                         $scope.loadMeta.action = 'schemas';
                         $scope.loadMeta.info = INFO_SELECT_SCHEMAS;
+
+                        _stopSpin();
                     })
                     .error(function (errMsg) {
+                        _stopSpin();
+
                         $common.showError(errMsg);
                     });
             }
 
             function _loadMetadata() {
+                _startSpin();
+
                 $scope.loadMeta.allTablesSelected = false;
                 $scope.loadMeta.info = INFO_SELECT_TABLES;
 
@@ -303,9 +319,13 @@ controlCenterModule.controller('metadataController', [
                         $scope.loadMeta.tables = tables;
                         $scope.loadMeta.action = 'tables';
                         $scope.loadMeta.button = 'Save';
+
+                        _stopSpin();
                     })
                     .error(function (errMsg) {
                         $common.showError(errMsg);
+
+                        _stopSpin();
                     });
             }
 
