@@ -24,6 +24,7 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
+import org.apache.ignite.cache.eviction.random.RandomEvictionPolicy;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.ConnectorConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -86,8 +87,13 @@ public class IgniteNode implements BenchmarkServer {
             if (cl)
                 c.setClientMode(true);
 
-            if (args.isNearCache())
-                cc.setNearConfiguration(new NearCacheConfiguration());
+            if (args.isNearCache()) {
+                NearCacheConfiguration ncCfg = new NearCacheConfiguration();
+
+                ncCfg.setNearEvictionPolicy(new RandomEvictionPolicy(args.nearCacheMaxSize()));
+
+                cc.setNearConfiguration(ncCfg);
+            }
 
             cc.setWriteSynchronizationMode(args.syncMode());
 

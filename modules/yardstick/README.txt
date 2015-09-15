@@ -60,6 +60,7 @@ The following Ignite benchmark properties can be defined in the benchmark config
 * `-sm <mode>` or `-syncMode <mode>` - Synchronization mode (defined in `CacheWriteSynchronizationMode`)
 * `-cl` or `--client` - Client flag
 * `-nc` or `--nearCache` - Near cache flag
+* `-ncms` or `--nearCacheMaxSize` - Near cache max size flag
 * `-wom <mode>` or `--writeOrderMode <mode>` - Write order mode for ATOMIC caches (defined in `CacheAtomicWriteOrderMode`)
 * `-txc <value>` or `--txConcurrency <value>` - Cache transaction concurrency control, either `OPTIMISTIC` or `PESSIMISTIC` (defined in `CacheTxConcurrency`)
 * `-txi <value>` or `--txIsolation <value>` - Cache transaction isolation (defined in `CacheTxIsolation`)

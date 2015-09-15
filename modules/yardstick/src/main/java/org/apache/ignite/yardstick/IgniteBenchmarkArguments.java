@@ -53,6 +53,10 @@ public class IgniteBenchmarkArguments {
     private boolean nearCacheFlag = false;
 
     /** */
+    @Parameter(names = {"-ncms", "--nearCacheMaxSize"}, description = "Near cache max size flag")
+    private int nearCacheMaxSize = 100_000;
+
+    /** */
     @Parameter(names = {"-wom", "--writeOrderMode"}, description = "Write ordering mode")
     private CacheAtomicWriteOrderMode orderMode;
 
@@ -159,6 +163,13 @@ public class IgniteBenchmarkArguments {
      */
     public boolean isNearCache() {
         return nearCacheFlag;
+    }
+
+    /**
+     * @return Near cache max size flag.
+     */
+    public int nearCacheMaxSize() {
+        return nearCacheMaxSize;
     }
 
     /**
@@ -271,7 +282,8 @@ public class IgniteBenchmarkArguments {
      */
     public String description() {
         return "-nn=" + nodes + "-b=" + backups + "-sm=" + syncMode + "-cl=" + clientOnly + "-nc=" + nearCacheFlag +
-            (orderMode == null ? "" : "-wom=" + orderMode) + "-txc=" + txConcurrency;
+            (nearCacheFlag ? "-ncms=" + nearCacheMaxSize : "") + (orderMode == null ? "" : "-wom=" + orderMode) +
+            "-txc=" + txConcurrency;
     }
 
     /** {@inheritDoc} */
