@@ -189,17 +189,6 @@ controlCenterModule.controller('metadataController', [
                 return false;
             };
 
-            // Load page descriptor.
-            $http.get('/models/metadata.json')
-                .success(function (data) {
-                    $scope.screenTip = data.screenTip;
-                    $scope.metadata = data.metadata;
-                    $scope.metadataDb = data.metadataDb;
-                })
-                .error(function (errMsg) {
-                    $common.showError(errMsg);
-                });
-
             $scope.selectAllSchemas = function () {
                 var allSelected = $scope.loadMeta.allSchemasSelected;
 
@@ -592,47 +581,58 @@ controlCenterModule.controller('metadataController', [
                     $scope.caches = data.caches;
                     $scope.metadatas = data.metadatas;
 
-                    var lastSelectedMetadata = angular.fromJson(sessionStorage.lastSelectedMetadata);
+                    // Load page descriptor.
+                    $http.get('/models/metadata.json')
+                        .success(function (data) {
+                            $scope.screenTip = data.screenTip;
+                            $scope.metadata = data.metadata;
+                            $scope.metadataDb = data.metadataDb;
 
-                    if (lastSelectedMetadata) {
-                        var idx = _.findIndex($scope.metadatas, function (metadata) {
-                            return metadata._id == lastSelectedMetadata;
+                            var lastSelectedMetadata = angular.fromJson(sessionStorage.lastSelectedMetadata);
+
+                            if (lastSelectedMetadata) {
+                                var idx = _.findIndex($scope.metadatas, function (metadata) {
+                                    return metadata._id == lastSelectedMetadata;
+                                });
+
+                                if (idx >= 0)
+                                    $scope.selectItem($scope.metadatas[idx]);
+                                else {
+                                    sessionStorage.removeItem('lastSelectedMetadata');
+
+                                    selectFirstItem();
+                                }
+                            }
+                            else
+                                selectFirstItem();
+
+                            $timeout(function () {
+                                $scope.$apply();
+
+                                $scope.ui.markPristineHard();
+                            });
+
+                            $scope.$watch('backupItem', function (val) {
+                                if (val) {
+                                    $scope.preview.general.xml = $generatorXml.metadataGeneral(val).asString();
+                                    $scope.preview.general.java = $generatorJava.metadataGeneral(val).asString();
+                                    $scope.preview.general.allDefaults = $common.isEmptyString($scope.preview.general.xml);
+
+                                    $scope.preview.query.xml = $generatorXml.metadataQuery(val).asString();
+                                    $scope.preview.query.java = $generatorJava.metadataQuery(val).asString();
+                                    $scope.preview.query.allDefaults = $common.isEmptyString($scope.preview.query.xml);
+
+                                    $scope.preview.store.xml = $generatorXml.metadataStore(val).asString();
+                                    $scope.preview.store.java = $generatorJava.metadataStore(val).asString();
+                                    $scope.preview.store.allDefaults = $common.isEmptyString($scope.preview.store.xml);
+
+                                    $scope.ui.markDirty();
+                                }
+                            }, true);
+                        })
+                        .error(function (errMsg) {
+                            $common.showError(errMsg);
                         });
-
-                        if (idx >= 0)
-                            $scope.selectItem($scope.metadatas[idx]);
-                        else {
-                            sessionStorage.removeItem('lastSelectedMetadata');
-
-                            selectFirstItem();
-                        }
-                    }
-                    else
-                        selectFirstItem();
-
-                    $timeout(function () {
-                        $scope.$apply();
-                        
-                        $scope.ui.markPristineHard();
-                    });
-
-                    $scope.$watch('backupItem', function (val) {
-                        if (val) {
-                            $scope.preview.general.xml = $generatorXml.metadataGeneral(val).asString();
-                            $scope.preview.general.java = $generatorJava.metadataGeneral(val).asString();
-                            $scope.preview.general.allDefaults = $common.isEmptyString($scope.preview.general.xml);
-
-                            $scope.preview.query.xml = $generatorXml.metadataQuery(val).asString();
-                            $scope.preview.query.java = $generatorJava.metadataQuery(val).asString();
-                            $scope.preview.query.allDefaults = $common.isEmptyString($scope.preview.query.xml);
-
-                            $scope.preview.store.xml = $generatorXml.metadataStore(val).asString();
-                            $scope.preview.store.java = $generatorJava.metadataStore(val).asString();
-                            $scope.preview.store.allDefaults = $common.isEmptyString($scope.preview.store.xml);
-
-                            $scope.ui.markDirty();
-                        }
-                    }, true);
                 })
                 .error(function (errMsg) {
                     $common.showError(errMsg);

@@ -108,17 +108,6 @@ controlCenterModule.controller('cachesController', [
 
             $scope.general = [];
             $scope.advanced = [];
-
-            $http.get('/models/caches.json')
-                .success(function (data) {
-                    $scope.screenTip = data.screenTip;
-                    $scope.general = data.general;
-                    $scope.advanced = data.advanced;
-                })
-                .error(function (errMsg) {
-                    $common.showError(errMsg);
-                });
-
             $scope.caches = [];
             $scope.metadatas = [];
 
@@ -243,97 +232,107 @@ controlCenterModule.controller('cachesController', [
                     $scope.spaces = data.spaces;
                     $scope.caches = data.caches;
                     $scope.clusters = data.clusters;
-
                     $scope.metadatas = _.map(data.metadatas, function (meta) {
                         return {value: meta._id, label: meta.valueType, kind: meta.kind, meta: meta}
                     });
 
-                    var lastSelectedCache = angular.fromJson(sessionStorage.lastSelectedCache);
+                    // Load page descriptor.
+                    $http.get('/models/caches.json')
+                        .success(function (data) {
+                            $scope.screenTip = data.screenTip;
+                            $scope.general = data.general;
+                            $scope.advanced = data.advanced;
 
-                    if (lastSelectedCache) {
-                        var idx = _.findIndex($scope.caches, function (cache) {
-                            return cache._id == lastSelectedCache;
-                        });
+                            var lastSelectedCache = angular.fromJson(sessionStorage.lastSelectedCache);
 
-                        if (idx >= 0)
-                            $scope.selectItem($scope.caches[idx]);
-                        else {
-                            sessionStorage.removeItem('lastSelectedCache');
+                            if (lastSelectedCache) {
+                                var idx = _.findIndex($scope.caches, function (cache) {
+                                    return cache._id == lastSelectedCache;
+                                });
 
-                            selectFirstItem();
-                        }
+                                if (idx >= 0)
+                                    $scope.selectItem($scope.caches[idx]);
+                                else {
+                                    sessionStorage.removeItem('lastSelectedCache');
 
-                    }
-                    else
-                        selectFirstItem();
-
-                    $timeout(function() {
-                        $scope.ui.markPristineHard();
-                    });
-
-                    $scope.$watch('backupItem', function (val) {
-                        if (val) {
-                            var metas = cacheMetadatas(val);
-                            var varName = $commonUtils.toJavaName('cache', val.name);
-
-                            $scope.preview.general.xml = $generatorXml.cacheMetadatas(metas, $generatorXml.cacheGeneral(val)).asString();
-                            $scope.preview.general.java = $generatorJava.cacheMetadatas(metas, varName, $generatorJava.cacheGeneral(val, varName)).asString();
-                            $scope.preview.general.allDefaults = $common.isEmptyString($scope.preview.general.xml);
-
-                            $scope.preview.memory.xml = $generatorXml.cacheMemory(val).asString();
-                            $scope.preview.memory.java = $generatorJava.cacheMemory(val, varName).asString();
-                            $scope.preview.memory.allDefaults = $common.isEmptyString($scope.preview.memory.xml);
-
-                            $scope.preview.query.xml = $generatorXml.cacheQuery(val).asString();
-                            $scope.preview.query.java = $generatorJava.cacheQuery(val, varName).asString();
-                            $scope.preview.query.allDefaults = $common.isEmptyString($scope.preview.query.xml);
-
-                            $scope.preview.store.xml = $generatorXml.cacheStore(val).asString();
-                            $scope.preview.store.java = $generatorJava.cacheStore(val, varName).asString();
-                            $scope.preview.store.allDefaults = $common.isEmptyString($scope.preview.store.xml);
-
-                            $scope.preview.concurrency.xml = $generatorXml.cacheConcurrency(val).asString();
-                            $scope.preview.concurrency.java = $generatorJava.cacheConcurrency(val, varName).asString();
-                            $scope.preview.concurrency.allDefaults = $common.isEmptyString($scope.preview.concurrency.xml);
-
-                            $scope.preview.rebalance.xml = $generatorXml.cacheRebalance(val).asString();
-                            $scope.preview.rebalance.java = $generatorJava.cacheRebalance(val, varName).asString();
-                            $scope.preview.rebalance.allDefaults = $common.isEmptyString($scope.preview.rebalance.xml);
-
-                            $scope.preview.serverNearCache.xml = $generatorXml.cacheServerNearCache(val).asString();
-                            $scope.preview.serverNearCache.java = $generatorJava.cacheServerNearCache(val, varName).asString();
-                            $scope.preview.serverNearCache.allDefaults = $common.isEmptyString($scope.preview.serverNearCache.xml);
-
-                            $scope.preview.statistics.xml = $generatorXml.cacheStatistics(val).asString();
-                            $scope.preview.statistics.java = $generatorJava.cacheStatistics(val, varName).asString();
-                            $scope.preview.statistics.allDefaults = $common.isEmptyString($scope.preview.statistics.xml);
-
-                            $scope.ui.markDirty();
-                        }
-                    }, true);
-
-                    $scope.$watch('backupItem.metadatas', function (val) {
-                        var item = $scope.backupItem;
-
-                        var cacheStoreFactory = $common.isDefined(item) &&
-                            $common.isDefined(item.cacheStoreFactory) &&
-                            $common.isDefined(item.cacheStoreFactory.kind);
-
-                        if (val && !cacheStoreFactory) {
-                            if (_.findIndex(cacheMetadatas(item), $common.metadataForStoreConfigured) >= 0) {
-                                item.cacheStoreFactory.kind = 'CacheJdbcPojoStoreFactory';
-
-                                if (!item.readThrough && !item.writeThrough) {
-                                    item.readThrough = true;
-                                    item.writeThrough = true;
+                                    selectFirstItem();
                                 }
 
-                                $timeout(function () {
-                                    $common.ensureActivePanel($scope.panels, 'store');
-                                });
                             }
-                        }
-                    }, true);
+                            else
+                                selectFirstItem();
+
+                            $timeout(function() {
+                                $scope.ui.markPristineHard();
+                            });
+
+                            $scope.$watch('backupItem', function (val) {
+                                if (val) {
+                                    var metas = cacheMetadatas(val);
+                                    var varName = $commonUtils.toJavaName('cache', val.name);
+
+                                    $scope.preview.general.xml = $generatorXml.cacheMetadatas(metas, $generatorXml.cacheGeneral(val)).asString();
+                                    $scope.preview.general.java = $generatorJava.cacheMetadatas(metas, varName, $generatorJava.cacheGeneral(val, varName)).asString();
+                                    $scope.preview.general.allDefaults = $common.isEmptyString($scope.preview.general.xml);
+
+                                    $scope.preview.memory.xml = $generatorXml.cacheMemory(val).asString();
+                                    $scope.preview.memory.java = $generatorJava.cacheMemory(val, varName).asString();
+                                    $scope.preview.memory.allDefaults = $common.isEmptyString($scope.preview.memory.xml);
+
+                                    $scope.preview.query.xml = $generatorXml.cacheQuery(val).asString();
+                                    $scope.preview.query.java = $generatorJava.cacheQuery(val, varName).asString();
+                                    $scope.preview.query.allDefaults = $common.isEmptyString($scope.preview.query.xml);
+
+                                    $scope.preview.store.xml = $generatorXml.cacheStore(val).asString();
+                                    $scope.preview.store.java = $generatorJava.cacheStore(val, varName).asString();
+                                    $scope.preview.store.allDefaults = $common.isEmptyString($scope.preview.store.xml);
+
+                                    $scope.preview.concurrency.xml = $generatorXml.cacheConcurrency(val).asString();
+                                    $scope.preview.concurrency.java = $generatorJava.cacheConcurrency(val, varName).asString();
+                                    $scope.preview.concurrency.allDefaults = $common.isEmptyString($scope.preview.concurrency.xml);
+
+                                    $scope.preview.rebalance.xml = $generatorXml.cacheRebalance(val).asString();
+                                    $scope.preview.rebalance.java = $generatorJava.cacheRebalance(val, varName).asString();
+                                    $scope.preview.rebalance.allDefaults = $common.isEmptyString($scope.preview.rebalance.xml);
+
+                                    $scope.preview.serverNearCache.xml = $generatorXml.cacheServerNearCache(val).asString();
+                                    $scope.preview.serverNearCache.java = $generatorJava.cacheServerNearCache(val, varName).asString();
+                                    $scope.preview.serverNearCache.allDefaults = $common.isEmptyString($scope.preview.serverNearCache.xml);
+
+                                    $scope.preview.statistics.xml = $generatorXml.cacheStatistics(val).asString();
+                                    $scope.preview.statistics.java = $generatorJava.cacheStatistics(val, varName).asString();
+                                    $scope.preview.statistics.allDefaults = $common.isEmptyString($scope.preview.statistics.xml);
+
+                                    $scope.ui.markDirty();
+                                }
+                            }, true);
+
+                            $scope.$watch('backupItem.metadatas', function (val) {
+                                var item = $scope.backupItem;
+
+                                var cacheStoreFactory = $common.isDefined(item) &&
+                                    $common.isDefined(item.cacheStoreFactory) &&
+                                    $common.isDefined(item.cacheStoreFactory.kind);
+
+                                if (val && !cacheStoreFactory) {
+                                    if (_.findIndex(cacheMetadatas(item), $common.metadataForStoreConfigured) >= 0) {
+                                        item.cacheStoreFactory.kind = 'CacheJdbcPojoStoreFactory';
+
+                                        if (!item.readThrough && !item.writeThrough) {
+                                            item.readThrough = true;
+                                            item.writeThrough = true;
+                                        }
+
+                                        $timeout(function () {
+                                            $common.ensureActivePanel($scope.panels, 'store');
+                                        });
+                                    }
+                                }
+                            }, true);
+                        })
+                        .error(function (errMsg) {
+                            $common.showError(errMsg);
+                        });
                })
                 .error(function (errMsg) {
                     $common.showError(errMsg);
