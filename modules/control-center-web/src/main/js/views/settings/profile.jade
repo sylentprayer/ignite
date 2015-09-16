@@ -58,5 +58,5 @@ block container
                                 .col-xs-5.col-sm-4
                                     input.form-control(type='password' ng-model='profileUser.confirmPassword' match='profileUser.newPassword' placeholder='Confirm new password' ng-required='profileUser.changePassword')
                     .col-xs-12.col-sm-12.details-row
-                        button.btn.btn-primary(ng-disabled='profileForm.$invalid' ng-click='saveUser()') Save
+                        a.btn.btn-primary(ng-disabled='!profileCouldBeSaved()' ng-click='profileCouldBeSaved() && saveUser()' bs-tooltip='' data-title='{{saveBtnTipText()}}' data-placement='bottom' data-trigger='hover') Save
 

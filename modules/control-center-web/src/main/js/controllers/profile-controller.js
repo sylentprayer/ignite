@@ -26,6 +26,25 @@ controlCenterModule.controller('profileController', ['$scope', '$http', '$common
         $scope.profileUser.token = $commonUtils.randomString(20);
     };
 
+    $scope.profileChanged = function () {
+        var old = $scope.user;
+        var cur = $scope.profileUser;
+
+        return old.username != cur.username || old.email != cur.email || old.token != cur.token ||
+            (cur.changePassword && !$common.isEmptyString(cur.newPassword));
+    };
+
+    $scope.profileCouldBeSaved = function () {
+        return $scope.profileForm.$valid && $scope.profileChanged();
+    };
+
+    $scope.saveBtnTipText = function () {
+        if (!$scope.profileForm.$valid)
+            return 'Invalid profile settings';
+
+        return $scope.profileChanged() ? 'Save profile' : 'Nothing to save';
+    };
+
     $scope.saveUser = function () {
         var profile = $scope.profileUser;
 
