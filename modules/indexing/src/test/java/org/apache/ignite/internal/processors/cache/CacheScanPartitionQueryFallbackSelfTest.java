@@ -36,6 +36,7 @@ import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.cache.query.QueryCursor;
 import org.apache.ignite.cache.query.ScanQuery;
@@ -44,14 +45,12 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.IgniteEx;
 import org.apache.ignite.internal.IgniteInternalFuture;
-import org.apache.ignite.internal.cluster.ClusterGroupEmptyCheckedException;
 import org.apache.ignite.internal.managers.communication.GridIoMessage;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalPartition;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState;
 import org.apache.ignite.internal.processors.cache.query.CacheQuery;
 import org.apache.ignite.internal.processors.cache.query.CacheQueryFuture;
-import org.apache.ignite.internal.processors.cache.query.GridCacheQueryAdapter;
 import org.apache.ignite.internal.processors.cache.query.GridCacheQueryRequest;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -103,6 +102,9 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
     /** Test entries. */
     private Map<Integer, Map<Integer, Integer>> entries = new HashMap<>();
 
+    /** */
+    private boolean syncRebalance;
+
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
@@ -120,6 +122,10 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
         ccfg.setCacheMode(cacheMode);
         ccfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
         ccfg.setBackups(backups);
+
+        if (syncRebalance)
+            ccfg.setRebalanceMode(CacheRebalanceMode.SYNC);
+
         ccfg.setNearConfiguration(null);
 
         cfg.setCacheConfiguration(ccfg);
@@ -192,8 +198,9 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
     public void testScanFallbackOnRebalancing() throws Exception {
         cacheMode = CacheMode.PARTITIONED;
         clientMode = false;
-        backups = 1;
+        backups = 2;
         commSpiFactory = new TestFallbackOnRebalancingCommunicationSpiFactory();
+        syncRebalance = true;
 
         try {
             Ignite ignite = startGrids(GRID_CNT);
@@ -214,6 +221,8 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
 
                             Thread.sleep(3000);
 
+                            info("Will stop grid: " + getTestGridName(id));
+
                             stopGrid(id);
 
                             if (done.get())
@@ -224,7 +233,7 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
 
                         return null;
                     }
-                }, GRID_CNT);
+                }, 2);
 
             final AtomicInteger nodeIdx = new AtomicInteger();
 
@@ -233,18 +242,18 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
                     @Override public Object call() throws Exception {
                         int nodeId = nodeIdx.getAndIncrement();
 
-                        IgniteCacheProxy<Integer, Integer> cache = (IgniteCacheProxy<Integer, Integer>)
-                            grid(nodeId).<Integer, Integer>cache(null);
+                        IgniteCache<Integer, Integer> cache = grid(nodeId).cache(null);
 
                         while (!done.get()) {
-                            IgniteBiTuple<Integer, UUID> tup = remotePartition(cache.context());
+                            int part = ThreadLocalRandom.current().nextInt(ignite(nodeId).affinity(null).partitions());
 
-                            int part = tup.get1();
+                            info("Running query [node=" + nodeId + ", part=" + part + ']');
 
-                            CacheQuery<Map.Entry<Integer, Integer>> qry = cache.context().queries().createScanQuery(
-                                null, part, false);
+                            try (QueryCursor<Cache.Entry<Integer, Integer>> cur =
+                                     cache.query(new ScanQuery<Integer, Integer>(part).setPageSize(5))) {
 
-                            doTestScanQuery(qry, part);
+                                doTestScanQueryCursor(cur, part);
+                            }
                         }
 
                         return null;
@@ -270,8 +279,6 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
      * @throws Exception In case of error.
      */
     public void testScanFallbackOnRebalancingCursor() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-1239");
-
         cacheMode = CacheMode.PARTITIONED;
         clientMode = false;
         backups = 1;
@@ -311,12 +318,13 @@ public class CacheScanPartitionQueryFallbackSelfTest extends GridCommonAbstractT
                         while (!done.get()) {
                             int part = ThreadLocalRandom.current().nextInt(ignite(nodeId).affinity(null).partitions());
 
-                            QueryCursor<Cache.Entry<Integer, Integer>> cur =
-                                cache.query(new ScanQuery<Integer, Integer>(part));
+                            info("Running query [node=" + nodeId + ", part=" + part + ']');
 
-                            U.debug(log, "Running query [node=" + nodeId + ", part=" + part + ']');
+                            try (QueryCursor<Cache.Entry<Integer, Integer>> cur =
+                                cache.query(new ScanQuery<Integer, Integer>(part).setPageSize(5))) {
 
-                            doTestScanQueryCursor(cur, part);
+                                doTestScanQueryCursor(cur, part);
+                            }
                         }
 
                         return null;
