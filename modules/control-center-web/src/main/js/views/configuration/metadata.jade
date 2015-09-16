@@ -26,8 +26,8 @@ block content
         h1 Create and Configure Cache Type Metadata
         hr
     .docs-body(ng-controller='metadataController')
-        div(dw-loading='loadingMetadataScreen' dw-loading-options='{className: "page-loading-overlay", text: "Loading metadata screen..."}')
-            div(ng-show='metadatas')
+        div(dw-loading='loadingMetadataScreen' dw-loading-options='{text: "Loading metadata screen..."}')
+            div(ng-if='ui.ready')
                 +block-callout('{{screenTip.workflowTitle}}', 'joinTip(screenTip.workflowContent)', '{{screenTip.whatsNextTitle}}', 'joinTip(screenTip.whatsNextContent)')
                 +main-table('Types metadata:', 'metadatas', 'metadataName', 'selectItem(row)', '{{$index + 1}}) {{row.valueType}}')
                 .padding-top-dflt(bs-affix)
@@ -36,7 +36,6 @@ block content
                     .panel-tip-container(bs-tooltip data-title='Load new metadata from database' data-placement='bottom')
                         button.btn.btn-primary(ng-click='showLoadMetadataModal()') Load from database
                     +save-remove-buttons('metadata')
-                    //label {{ui.formTitle}}
                     br
                     hr
                 form.form-horizontal(name='ui.inputForm' ng-if='backupItem' ng-submit='ui.noSubmit()' novalidate unsaved-warning-form)

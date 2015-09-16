@@ -26,21 +26,22 @@ block content
         h1 Create and Configure Ignite Clusters
         hr
     .docs-body(ng-controller='clustersController')
-        +block-callout('{{screenTip.workflowTitle}}', 'joinTip(screenTip.workflowContent)', '{{screenTip.whatsNextTitle}}', 'joinTip(screenTip.whatsNextContent)')
-        +main-table('Clusters:', 'clusters', 'clusterName', 'selectItem(row)', '{{$index + 1}}) {{row.name}}, {{row.discovery.kind | displayValue:discoveries:"Discovery not set"}}')
-        .padding-top-dflt(bs-affix)
-            .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new cluster')
-                button.btn.btn-primary(id='new-item' ng-click='createItem()') New
-            +save-remove-buttons('cluster')
-            //label {{ui.formTitle}}
-            br
-            hr
-        form.form-horizontal(name='ui.inputForm' ng-if='backupItem' ng-submit='ui.noSubmit()' novalidate unsaved-warning-form)
-            .panel-group(bs-collapse ng-model='panels.activePanels' data-allow-multiple='true' ng-click='triggerDigest = true')
-                +groups('general', 'backupItem')
-                div(ng-show='ui.expanded')
-                    +advanced-options-bottom
-                    +groups('advanced', 'backupItem')
-            +advanced-options-top
-            .section(ng-show='ui.expanded')
-                +save-remove-buttons('cluster')
+        div(dw-loading='loadingClustersScreen' dw-loading-options='{text: "Loading clusters screen..."}')
+            div(ng-if='ui.ready')
+                +block-callout('{{screenTip.workflowTitle}}', 'joinTip(screenTip.workflowContent)', '{{screenTip.whatsNextTitle}}', 'joinTip(screenTip.whatsNextContent)')
+                +main-table('Clusters:', 'clusters', 'clusterName', 'selectItem(row)', '{{$index + 1}}) {{row.name}}, {{row.discovery.kind | displayValue:discoveries:"Discovery not set"}}')
+                .padding-top-dflt(bs-affix)
+                    .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new cluster')
+                        button.btn.btn-primary(id='new-item' ng-click='createItem()') New
+                    +save-remove-buttons('cluster')
+                    br
+                    hr
+                form.form-horizontal(name='ui.inputForm' ng-if='backupItem' ng-submit='ui.noSubmit()' novalidate unsaved-warning-form)
+                    .panel-group(bs-collapse ng-model='panels.activePanels' data-allow-multiple='true' ng-click='triggerDigest = true')
+                        +groups('general', 'backupItem')
+                        div(ng-show='ui.expanded')
+                            +advanced-options-bottom
+                            +groups('advanced', 'backupItem')
+                    +advanced-options-top
+                    .section(ng-show='ui.expanded')
+                        +save-remove-buttons('cluster')

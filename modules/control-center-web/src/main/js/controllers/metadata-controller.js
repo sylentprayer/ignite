@@ -632,6 +632,7 @@ controlCenterModule.controller('metadataController', [
                     $common.showError(errMsg);
                 })
                 .finally(function() {
+                    $scope.ui.ready = true;
                     $loading.finish('loadingMetadataScreen');
                 });
 

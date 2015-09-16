@@ -17,8 +17,8 @@
 
 // Controller for Caches screen.
 controlCenterModule.controller('cachesController', [
-        '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$copy', '$table', '$preview',
-        function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $copy, $table, $preview) {
+        '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$copy', '$table', '$preview', '$loading',
+        function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $copy, $table, $preview, $loading) {
             // Initialize the super class and extend it.
             angular.extend(this, $controller('save-remove', {$scope: $scope}));
 
@@ -226,6 +226,8 @@ controlCenterModule.controller('cachesController', [
                 }, []);
             }
 
+            $loading.start('loadingCachesScreen');
+
             // When landing on the page, get caches and show them.
             $http.post('caches/list')
                 .success(function (data) {
@@ -333,9 +335,13 @@ controlCenterModule.controller('cachesController', [
                         .error(function (errMsg) {
                             $common.showError(errMsg);
                         });
-               })
+                })
                 .error(function (errMsg) {
                     $common.showError(errMsg);
+                })
+                .finally(function () {
+                    $scope.ui.ready = true;
+                    $loading.finish('loadingCachesScreen');
                 });
 
             $scope.selectItem = function (item, backup) {

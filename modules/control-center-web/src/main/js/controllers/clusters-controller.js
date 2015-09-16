@@ -16,8 +16,8 @@
  */
 
 // Controller for Clusters screen.
-controlCenterModule.controller('clustersController', ['$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$copy', '$table', '$preview',
-    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $copy, $table, $preview) {
+controlCenterModule.controller('clustersController', ['$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$copy', '$table', '$preview', '$loading',
+    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $copy, $table, $preview, $loading) {
         // Initialize the super class and extend it.
         angular.extend(this, $controller('save-remove', {$scope: $scope}));
 
@@ -152,6 +152,8 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
                 $scope.selectItem($scope.clusters[0]);
         }
 
+        $loading.start('loadingClustersScreen');
+
         // When landing on the page, get clusters and show them.
         $http.post('clusters/list')
             .success(function (data) {
@@ -259,6 +261,10 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
             })
             .error(function (errMsg) {
                 $common.showError(errMsg);
+            })
+            .finally(function () {
+                $scope.ui.ready = true;
+                $loading.finish('loadingClustersScreen');
             });
 
         $scope.selectItem = function (item, backup) {

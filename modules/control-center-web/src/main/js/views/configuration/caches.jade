@@ -26,21 +26,22 @@ block content
         h1 Create and Configure Ignite Caches
         hr
     .docs-body(ng-controller='cachesController')
-        +block-callout('{{screenTip.workflowTitle}}', 'joinTip(screenTip.workflowContent)', '{{screenTip.whatsNextTitle}}', 'joinTip(screenTip.whatsNextContent)')
-        +main-table('Caches:', 'caches', 'cacheName', 'selectItem(row)', '{{$index + 1}}) {{row.name}}, {{row.cacheMode | displayValue:cacheModes:"Cache mode not set"}}, {{row.atomicityMode | displayValue:atomicities:"Cache atomicity not set"}}')
-        .padding-top-dflt(bs-affix)
-            .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new caches')
-                button.btn.btn-primary(id='new-item' ng-click='createItem()') New
-            +save-remove-buttons('cache')
-            //label {{ui.formTitle}}
-            br
-            hr
-        form.form-horizontal(name='ui.inputForm' ng-if='backupItem' ng-submit='ui.noSubmit()' novalidate unsaved-warning-form)
-            .panel-group(bs-collapse ng-model='panels.activePanels' data-allow-multiple='true')
-                +groups('general', 'backupItem')
-                div(ng-show='ui.expanded')
-                    +advanced-options-bottom
-                    +groups('advanced', 'backupItem')
-            +advanced-options-top
-            .section(ng-if='ui.expanded')
-                +save-remove-buttons('cache')
+        div(dw-loading='loadingCachesScreen' dw-loading-options='{text: "Loading caches screen..."}')
+            div(ng-if='ui.ready')
+                +block-callout('{{screenTip.workflowTitle}}', 'joinTip(screenTip.workflowContent)', '{{screenTip.whatsNextTitle}}', 'joinTip(screenTip.whatsNextContent)')
+                +main-table('Caches:', 'caches', 'cacheName', 'selectItem(row)', '{{$index + 1}}) {{row.name}}, {{row.cacheMode | displayValue:cacheModes:"Cache mode not set"}}, {{row.atomicityMode | displayValue:atomicities:"Cache atomicity not set"}}')
+                .padding-top-dflt(bs-affix)
+                    .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new caches')
+                        button.btn.btn-primary(id='new-item' ng-click='createItem()') New
+                    +save-remove-buttons('cache')
+                    br
+                    hr
+                form.form-horizontal(name='ui.inputForm' ng-if='backupItem' ng-submit='ui.noSubmit()' novalidate unsaved-warning-form)
+                    .panel-group(bs-collapse ng-model='panels.activePanels' data-allow-multiple='true')
+                        +groups('general', 'backupItem')
+                        div(ng-show='ui.expanded')
+                            +advanced-options-bottom
+                            +groups('advanced', 'backupItem')
+                    +advanced-options-top
+                    .section(ng-if='ui.expanded')
+                        +save-remove-buttons('cache')

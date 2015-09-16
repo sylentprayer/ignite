@@ -816,6 +816,7 @@ controlCenterModule.service('$common', [
             },
             formUI: function (initialDirtyCnt) {
                 return {
+                    ready: false,
                     expanded: false,
                     dirty: initialDirtyCnt,
                     isDirty: function () {
