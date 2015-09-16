@@ -123,7 +123,7 @@ class GridDhtPartitionSupplier {
 
         ClusterNode node = cctx.discovery().node(id);
 
-        T2<UUID, Object> scId = new T2<>(id, d.topic());
+        T2<UUID, Object> scId = new T2<>(id, d.topic());//todo remove topic.
 
         try {
             if (!d.partitions().isEmpty()) {//Only initial request contains partitions.
