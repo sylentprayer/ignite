@@ -264,16 +264,8 @@ controlCenterModule.controller('metadataController', [
                     });
             };
 
-            function _startLoadMetadata() {
-                $loading.start('metadataLoading');
-            }
-
-            function _stopLoadMetadata() {
-                $loading.finish('metadataLoading');
-            }
-
             function _loadSchemas() {
-                _startLoadMetadata();
+                $loading.start('loadingMetadataFromDb');
 
                 $http.post('/agent/schemas', $scope.preset)
                     .success(function (schemas) {
@@ -286,12 +278,12 @@ controlCenterModule.controller('metadataController', [
                     .finally(function() {
                         $scope.loadMeta.info = INFO_SELECT_SCHEMAS;
 
-                        _stopLoadMetadata();
+                        $loading.finish('loadingMetadataFromDb');
                     });
             }
 
             function _loadMetadata() {
-                _startLoadMetadata();
+                $loading.start('loadingMetadataFromDb');
 
                 $scope.loadMeta.allTablesSelected = false;
                 $scope.preset.schemas = [];
@@ -313,7 +305,7 @@ controlCenterModule.controller('metadataController', [
                     .finally(function() {
                         $scope.loadMeta.info = INFO_SELECT_TABLES;
 
-                        _stopLoadMetadata();
+                        $loading.finish('loadingMetadataFromDb');
                     });
             }
 
@@ -575,6 +567,8 @@ controlCenterModule.controller('metadataController', [
             }
 
             // When landing on the page, get metadatas and show them.
+            $loading.start('loadingMetadataScreen');
+
             $http.post('metadata/list')
                 .success(function (data) {
                     $scope.spaces = data.spaces;
@@ -636,6 +630,9 @@ controlCenterModule.controller('metadataController', [
                 })
                 .error(function (errMsg) {
                     $common.showError(errMsg);
+                })
+                .finally(function() {
+                    $loading.finish('loadingMetadataScreen');
                 });
 
             $http.post('presets/list')
