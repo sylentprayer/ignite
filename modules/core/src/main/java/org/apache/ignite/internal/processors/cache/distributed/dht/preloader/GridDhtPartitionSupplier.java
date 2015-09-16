@@ -17,21 +17,31 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.internal.managers.deployment.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.distributed.dht.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jsr166.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
+import org.apache.ignite.internal.managers.deployment.GridDeploymentInfo;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryInfo;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryInfoCollectSwapListener;
+import org.apache.ignite.internal.processors.cache.GridCacheSwapEntry;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheEntry;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalPartition;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionTopology;
+import org.apache.ignite.internal.util.lang.GridCloseableIterator;
+import org.apache.ignite.internal.util.typedef.CI2;
+import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.jsr166.ConcurrentHashMap8;
 
-import java.util.*;
-
-import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.*;
+import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.OWNING;
 
 /**
  * Thread pool for supplying partitions to demanding nodes.
@@ -234,13 +244,18 @@ class GridDhtPartitionSupplier {
 
                     }
 
-                    if (phase == 1)
+                    if (phase == 1) {
+                        if (sctx != null)
+                            sctx.entryIt = null;
+
                         phase = 2;
+                    }
 
                     if (phase == 2 && cctx.isSwapOrOffheapEnabled()) {
-                        GridCloseableIterator<Map.Entry<byte[], GridCacheSwapEntry>> iter = sctx != null ?
-                            (GridCloseableIterator<Map.Entry<byte[], GridCacheSwapEntry>>)sctx.entryIt :
-                            cctx.swap().iterator(part);
+                        GridCloseableIterator<Map.Entry<byte[], GridCacheSwapEntry>> iter =
+                            sctx != null && sctx.entryIt != null ?
+                                (GridCloseableIterator<Map.Entry<byte[], GridCacheSwapEntry>>)sctx.entryIt :
+                                cctx.swap().iterator(part);
 
                         // Iterator may be null if space does not exist.
                         if (iter != null) {
@@ -342,15 +357,19 @@ class GridDhtPartitionSupplier {
                         cctx.swap().removeSwapListener(part, swapLsnr);
                     }
 
-                    if (phase == 2)
+                    if (phase == 2) {
+                        if (sctx != null)
+                            sctx.entryIt = null;
+
                         phase = 3;
+                    }
 
                     if (phase == 3 && swapLsnr != null) {
                         Collection<GridCacheEntryInfo> entries = swapLsnr.entries();
 
                         swapLsnr = null;
 
-                        Iterator<GridCacheEntryInfo> lsnrIt = sctx != null ?
+                        Iterator<GridCacheEntryInfo> lsnrIt = sctx != null && sctx.entryIt != null ?
                             (Iterator<GridCacheEntryInfo>)sctx.entryIt : entries.iterator();
 
                         while (lsnrIt.hasNext()) {
