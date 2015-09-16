@@ -258,92 +258,89 @@ class GridDhtPartitionSupplier {
 
                         // Iterator may be null if space does not exist.
                         if (iter != null) {
-                            try {
-                                boolean prepared = false;
+                            boolean prepared = false;
 
-                                while (iter.hasNext()) {
-                                    if (!cctx.affinity().belongs(node, part, d.topologyVersion())) {
-                                        // Demander no longer needs this partition,
-                                        // so we send '-1' partition and move on.
-                                        s.missed(part);
+                            while (iter.hasNext()) {
+                                if (!cctx.affinity().belongs(node, part, d.topologyVersion())) {
+                                    // Demander no longer needs this partition,
+                                    // so we send '-1' partition and move on.
+                                    s.missed(part);
 
-                                        if (log.isDebugEnabled())
-                                            log.debug("Demanding node does not need requested partition " +
-                                                "[part=" + part + ", nodeId=" + id + ']');
+                                    if (log.isDebugEnabled())
+                                        log.debug("Demanding node does not need requested partition " +
+                                            "[part=" + part + ", nodeId=" + id + ']');
 
-                                        partMissing = true;
+                                    partMissing = true;
 
-                                        break; // For.
+                                    break; // For.
+                                }
+
+                                if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
+                                    if (!reply(node, d, s))
+                                        return;
+
+                                    // Throttle preloading.
+                                    if (preloadThrottle > 0)
+                                        U.sleep(preloadThrottle);
+
+                                    if (++bCnt >= maxBatchesCnt) {
+                                        saveSupplyContext(scId, phase, partIt, part, iter, swapLsnr);
+
+                                        swapLsnr = null;
+
+                                        return;
                                     }
-
-                                    if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
-                                        if (!reply(node, d, s))
-                                            return;
-
-                                        // Throttle preloading.
-                                        if (preloadThrottle > 0)
-                                            U.sleep(preloadThrottle);
-
-                                        if (++bCnt >= maxBatchesCnt) {
-                                            saveSupplyContext(scId, phase, partIt, part, iter, swapLsnr);
-
-                                            swapLsnr = null;
-
-                                            return;
-                                        }
-                                        else {
-                                            s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
-                                                cctx.cacheId(), d.topologyVersion());
-                                        }
-                                    }
-
-                                    Map.Entry<byte[], GridCacheSwapEntry> e = iter.next();
-
-                                    GridCacheSwapEntry swapEntry = e.getValue();
-
-                                    GridCacheEntryInfo info = new GridCacheEntryInfo();
-
-                                    info.keyBytes(e.getKey());
-                                    info.ttl(swapEntry.ttl());
-                                    info.expireTime(swapEntry.expireTime());
-                                    info.version(swapEntry.version());
-                                    info.value(swapEntry.value());
-
-                                    if (preloadPred == null || preloadPred.apply(info))
-                                        s.addEntry0(part, info, cctx);
                                     else {
-                                        if (log.isDebugEnabled())
-                                            log.debug("Rebalance predicate evaluated to false (will not send " +
-                                                "cache entry): " + info);
-
-                                        continue;
-                                    }
-
-                                    // Need to manually prepare cache message.
-                                    if (depEnabled && !prepared) {
-                                        ClassLoader ldr = swapEntry.keyClassLoaderId() != null ?
-                                            cctx.deploy().getClassLoader(swapEntry.keyClassLoaderId()) :
-                                            swapEntry.valueClassLoaderId() != null ?
-                                                cctx.deploy().getClassLoader(swapEntry.valueClassLoaderId()) :
-                                                null;
-
-                                        if (ldr == null)
-                                            continue;
-
-                                        if (ldr instanceof GridDeploymentInfo) {
-                                            s.prepare((GridDeploymentInfo)ldr);
-
-                                            prepared = true;
-                                        }
+                                        s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
+                                            cctx.cacheId(), d.topologyVersion());
                                     }
                                 }
 
-                                if (partMissing)
+                                Map.Entry<byte[], GridCacheSwapEntry> e = iter.next();
+
+                                GridCacheSwapEntry swapEntry = e.getValue();
+
+                                GridCacheEntryInfo info = new GridCacheEntryInfo();
+
+                                info.keyBytes(e.getKey());
+                                info.ttl(swapEntry.ttl());
+                                info.expireTime(swapEntry.expireTime());
+                                info.version(swapEntry.version());
+                                info.value(swapEntry.value());
+
+                                if (preloadPred == null || preloadPred.apply(info))
+                                    s.addEntry0(part, info, cctx);
+                                else {
+                                    if (log.isDebugEnabled())
+                                        log.debug("Rebalance predicate evaluated to false (will not send " +
+                                            "cache entry): " + info);
+
                                     continue;
+                                }
+
+                                // Need to manually prepare cache message.
+                                if (depEnabled && !prepared) {
+                                    ClassLoader ldr = swapEntry.keyClassLoaderId() != null ?
+                                        cctx.deploy().getClassLoader(swapEntry.keyClassLoaderId()) :
+                                        swapEntry.valueClassLoaderId() != null ?
+                                            cctx.deploy().getClassLoader(swapEntry.valueClassLoaderId()) :
+                                            null;
+
+                                    if (ldr == null)
+                                        continue;
+
+                                    if (ldr instanceof GridDeploymentInfo) {
+                                        s.prepare((GridDeploymentInfo)ldr);
+
+                                        prepared = true;
+                                    }
+                                }
                             }
-                            finally {
-                                iter.close();
-                            }
+
+                            iter.close();//todo close at contexts clear
+
+                            if (partMissing)
+                                continue;
                         }
                     }
 
