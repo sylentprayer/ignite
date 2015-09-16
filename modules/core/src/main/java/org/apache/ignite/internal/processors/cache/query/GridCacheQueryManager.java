@@ -33,8 +33,9 @@ import org.apache.ignite.internal.managers.eventstorage.GridLocalEventListener;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheMetricsImpl;
 import org.apache.ignite.internal.processors.cache.CacheObject;
-import org.apache.ignite.internal.processors.cache.CachePeekModes;
 import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryRemovedException;
 import org.apache.ignite.internal.processors.cache.GridCacheInternal;
 import org.apache.ignite.internal.processors.cache.GridCacheManagerAdapter;
 import org.apache.ignite.internal.processors.cache.GridCacheOffheapSwapEntry;
@@ -819,7 +820,11 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
         final GridDhtCacheAdapter dht = cctx.isLocal() ? null : (cctx.isNear() ? cctx.near().dht() : cctx.dht());
 
+        final GridCacheAdapter cache = dht != null ? dht : cctx.cache();
+
         final ExpiryPolicy plc = cctx.expiry();
+
+        final AffinityTopologyVersion topVer = cctx.affinity().affinityTopologyVersion();
 
         final boolean backups = qry.includeBackups() || cctx.isReplicated();
 
@@ -841,8 +846,6 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                     else if (part < 0 || part >= cctx.affinity().partitions())
                         iter = F.emptyIterator();
                     else {
-                        AffinityTopologyVersion topVer = cctx.affinity().affinityTopologyVersion();
-
                         locPart = dht.topology().localPartition(part, topVer, false);
 
                         // double check for owning state
@@ -899,7 +902,15 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                         V val;
 
                         try {
-                            val = prj.localPeek(key, CachePeekModes.ONHEAP_ONLY, expiryPlc);
+                            GridCacheEntryEx entry = cache.peekEx(key);
+
+                            CacheObject cacheVal =
+                                entry != null ? entry.peek(true, false, false, topVer, expiryPlc) : null;
+
+                            val = cacheVal != null ? (V)cacheVal.value(cctx.cacheObjectContext(), false) : null;
+                        }
+                        catch (GridCacheEntryRemovedException e) {
+                            val = null;
                         }
                         catch (IgniteCheckedException e) {
                             if (log.isDebugEnabled())

@@ -143,8 +143,6 @@ public class GridCacheDistributedQueryFuture<K, V, R> extends GridCacheQueryFutu
         }
 
         if (callOnPage)
-            // We consider node departure as a reception of last empty
-            // page from this node.
             onPage(nodeId, Collections.emptyList(),
                 new ClusterTopologyCheckedException("Remote node has left topology: " + nodeId), true);
     }

@@ -50,8 +50,6 @@ import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteBiPredicate;
 import org.apache.ignite.lang.IgniteClosure;
-import org.apache.ignite.lang.IgniteInClosure;
-import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.lang.IgniteReducer;
 import org.apache.ignite.plugin.security.SecurityPermission;
 import org.jetbrains.annotations.Nullable;
@@ -599,6 +597,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
         }
 
         /**
+         * @param topVer Topology version.
          * @return Nodes for query execution.
          */
         private Queue<ClusterNode> fallbacks(AffinityTopologyVersion topVer) {
@@ -629,53 +628,9 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
         private void init() {
             final ClusterNode node = nodes.poll();
 
-            GridCacheQueryFutureAdapter<?, ?, R> fut0 = (GridCacheQueryFutureAdapter<?, ?, R>)(node.isLocal() ?
+            fut = (GridCacheQueryFutureAdapter<?, ?, R>)(node.isLocal() ?
                 qryMgr.queryLocal(bean) :
                 qryMgr.queryDistributed(bean, Collections.singleton(node)));
-
-            fut0.listen(new IgniteInClosure<IgniteInternalFuture<Collection<R>>>() {
-                @Override public void apply(IgniteInternalFuture<Collection<R>> fut) {
-                    try {
-                        onDone(fut.get());
-                    }
-                    catch (IgniteClientDisconnectedCheckedException e) {
-                        onDone(e);
-                    }
-                    catch (IgniteCheckedException e) {
-                        if (e.hasCause(GridDhtUnreservedPartitionException.class)) {
-                            unreservedTopVer = ((GridDhtUnreservedPartitionException)e.getCause()).topologyVersion();
-
-                            assert unreservedTopVer != null;
-                        }
-
-                        if (F.isEmpty(nodes)) {
-                            final AffinityTopologyVersion topVer = unreservedTopVer;
-
-                            if (topVer != null && --unreservedNodesRetryCnt > 0) {
-                                cctx.affinity().affinityReadyFuture(topVer).listen(
-                                    new IgniteInClosure<IgniteInternalFuture<AffinityTopologyVersion>>() {
-                                        @Override public void apply(
-                                            IgniteInternalFuture<AffinityTopologyVersion> future) {
-
-                                            nodes = fallbacks(topVer);
-
-                                            // Race is impossible here because query retries are executed one by one.
-                                            unreservedTopVer = null;
-
-                                            init();
-                                        }
-                                    });
-                            }
-                            else
-                                onDone(e);
-                        }
-                        else
-                            init();
-                    }
-                }
-            });
-
-            fut = fut0;
         }
 
         /** {@inheritDoc} */
@@ -686,6 +641,13 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
         /** {@inheritDoc} */
         @Override public boolean cancel() throws IgniteCheckedException {
             return fut.cancel();
+        }
+
+        /** {@inheritDoc} */
+        @Override public Collection<R> get() throws IgniteCheckedException {
+            assert false;
+
+            return super.get();
         }
 
         /** {@inheritDoc} */

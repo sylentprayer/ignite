@@ -745,16 +745,16 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
 
                 int part = ctx.affinity().partition(cacheKey);
 
-                boolean dhtKey = false;
+                boolean nearKey;
 
-                if (modes.primary || modes.backup) {
+                if (!(modes.near && modes.primary && modes.backup)) {
                     boolean keyPrimary = ctx.affinity().primary(ctx.localNode(), part, topVer);
 
                     if (keyPrimary) {
                         if (!modes.primary)
                             return null;
 
-                        dhtKey = true;
+                        nearKey = false;
                     }
                     else {
                         boolean keyBackup = ctx.affinity().belongs(ctx.localNode(), part, topVer);
@@ -763,34 +763,39 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                             if (!modes.backup)
                                 return null;
 
-                            dhtKey = true;
+                            nearKey = false;
+                        }
+                        else {
+                            if (!modes.near)
+                                return null;
+
+                            nearKey = true;
+
+                            // Swap and offheap are disabled for near cache.
+                            modes.offheap = false;
+                            modes.swap = false;
                         }
                     }
-
-                    // We will always peek DHT entry if both primary and backup flags are set, regardless of
-                    // affinity calculation.
-                    // This is required because there are scenarios when neither primary nor backup node is an owner,
-                    // but we need to be able to peek cache value.
-                    dhtKey |= (modes.primary && modes.backup);
                 }
+                else {
+                    nearKey = !ctx.affinity().belongs(ctx.localNode(), part, topVer);
 
-                if (!dhtKey && !ctx.isNear())
-                    return null;
-
-                if (modes.heap) {
-                    GridCacheEntryEx e = (ctx.isNear() ? ctx.near().dht().peekEx(cacheKey) : peekEx(cacheKey));
-
-                    if (e != null) {
-                        cacheVal = e.peek(modes.heap, modes.offheap, modes.swap, topVer, plc);
-
+                    if (nearKey) {
+                        // Swap and offheap are disabled for near cache.
                         modes.offheap = false;
                         modes.swap = false;
                     }
+                }
 
-                    if (cacheVal == null && modes.near && ctx.isNear()) {
-                        e = peekEx(cacheKey);
+                if (nearKey && !ctx.isNear())
+                    return null;
 
-                        cacheVal = e.peek(modes.heap, false, false, topVer, plc);
+                if (modes.heap) {
+                    GridCacheEntryEx e = nearKey ? peekEx(cacheKey) :
+                        (ctx.isNear() ? ctx.near().dht().peekEx(cacheKey) : peekEx(cacheKey));
+
+                    if (e != null) {
+                        cacheVal = e.peek(modes.heap, modes.offheap, modes.swap, topVer, plc);
 
                         modes.offheap = false;
                         modes.swap = false;
