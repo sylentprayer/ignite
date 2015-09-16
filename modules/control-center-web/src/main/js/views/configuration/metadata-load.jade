@@ -21,7 +21,7 @@ mixin chk(mdl, change, tip)
 
 .modal.center(role='dialog')
     .modal-dialog
-        .modal-content
+        .modal-content(us-spinner spinner-key='load-spinner')
             #errors-container.modal-header.header
                 button.close(type='button' ng-click='$hide()' aria-hidden='true') &times;
                 h4.modal-title Load metadata from database
