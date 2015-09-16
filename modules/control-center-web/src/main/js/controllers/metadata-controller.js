@@ -17,8 +17,8 @@
 
 // Controller for Metadata screen.
 controlCenterModule.controller('metadataController', [
-        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$copy', '$table', '$preview', '$stepConfirm', 'usSpinnerService',
-        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $copy, $table, $preview, $stepConfirm, usSpinnerService) {
+        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$copy', '$table', '$preview', '$stepConfirm', '$loading',
+        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $copy, $table, $preview, $stepConfirm, $loading) {
             // Initialize the super class and extend it.
             angular.extend(this, $controller('save-remove', {$scope: $scope}));
 
@@ -275,38 +275,36 @@ controlCenterModule.controller('metadataController', [
                     });
             };
 
-            function _startSpin() {
-                usSpinnerService.spin('load-spinner');
+            function _startLoadMetadata() {
+                $loading.start('metadataLoading');
             }
 
-            function _stopSpin() {
-                usSpinnerService.stop('load-spinner');
+            function _stopLoadMetadata() {
+                $loading.finish('metadataLoading');
             }
 
             function _loadSchemas() {
-                _startSpin();
+                _startLoadMetadata();
 
                 $http.post('/agent/schemas', $scope.preset)
                     .success(function (schemas) {
                         $scope.loadMeta.schemas = _.map(schemas, function (schema) { return {use: false, name: schema}});
                         $scope.loadMeta.action = 'schemas';
-                        $scope.loadMeta.info = INFO_SELECT_SCHEMAS;
-
-                        _stopSpin();
                     })
                     .error(function (errMsg) {
-                        _stopSpin();
-
                         $common.showError(errMsg);
+                    })
+                    .finally(function() {
+                        $scope.loadMeta.info = INFO_SELECT_SCHEMAS;
+
+                        _stopLoadMetadata();
                     });
             }
 
             function _loadMetadata() {
-                _startSpin();
+                _startLoadMetadata();
 
                 $scope.loadMeta.allTablesSelected = false;
-                $scope.loadMeta.info = INFO_SELECT_TABLES;
-
                 $scope.preset.schemas = [];
 
                 _.forEach($scope.loadMeta.schemas, function (schema) {
@@ -319,20 +317,15 @@ controlCenterModule.controller('metadataController', [
                         $scope.loadMeta.tables = tables;
                         $scope.loadMeta.action = 'tables';
                         $scope.loadMeta.button = 'Save';
-
-                        _stopSpin();
                     })
                     .error(function (errMsg) {
                         $common.showError(errMsg);
+                    })
+                    .finally(function() {
+                        $scope.loadMeta.info = INFO_SELECT_TABLES;
 
-                        _stopSpin();
+                        _stopLoadMetadata();
                     });
-            }
-
-            function toProperCase(name) {
-                var properName = name.toLocaleLowerCase();
-
-                return properName.charAt(0).toLocaleUpperCase() + properName.slice(1)
             }
 
             function toJavaClassName(name) {

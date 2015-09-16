@@ -253,6 +253,7 @@
       "id": "password",
       "type": "password",
       "model": "password",
+      "onEnter": "loadMetadataNext()",
       "tip": [
         "Password for connecting to database.",
         "Note, password would not be saved."

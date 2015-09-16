@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-var controlCenterModule = angular.module('ignite-web-control-center', ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'unsavedChanges', 'angularSpinner']);
+var controlCenterModule = angular.module('ignite-web-control-center', ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'unsavedChanges', 'darthwade.loading']);
 
 // Modal popup configuration.
 controlCenterModule.config(function ($modalProvider) {

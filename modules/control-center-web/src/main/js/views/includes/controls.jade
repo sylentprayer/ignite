@@ -290,7 +290,7 @@ mixin form-row-custom(lblClasses, fieldClasses, dataSource)
             div(class=fieldClasses)
                 +tipField('field.tip')
                 .input-tip
-                    input.form-control(id='{{::field.id}}' type='password' placeholder='{{::field.placeholder}}')&attributes(fieldCommon)
+                    input.form-control(id='{{::field.id}}' type='password' placeholder='{{::field.placeholder}}' on-enter='{{::field.onEnter}}')&attributes(fieldCommon)
         div(ng-switch-when='number' ng-hide=fieldHide)
             label(class=lblClasses ng-class=fieldRequiredClass) {{::field.label}}:
             div(class=fieldClasses)
