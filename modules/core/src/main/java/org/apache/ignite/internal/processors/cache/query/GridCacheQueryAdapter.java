@@ -664,7 +664,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
                     return fut.next();
                 }
                 catch (IgniteClientDisconnectedCheckedException e) {
-                    throw U.convertException(e);
+                    throw CU.convertToCacheException(e);
                 }
                 catch (IgniteCheckedException e) {
                     retryIfPossible(e);
@@ -697,7 +697,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
                     retryFut = ex.retryReadyFuture();
                 }
                 else
-                    throw U.convertException(e);
+                    throw CU.convertToCacheException(e);
 
                 if (F.isEmpty(nodes)) {
                     if (--unreservedNodesRetryCnt > 0) {
@@ -711,13 +711,13 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
                         init();
                     }
                     else
-                        throw U.convertException(e);
+                        throw CU.convertToCacheException(e);
                 }
                 else
                     init();
             }
             catch (IgniteCheckedException ex) {
-                throw U.convertException(ex);
+                throw CU.convertToCacheException(ex);
             }
         }
     }
