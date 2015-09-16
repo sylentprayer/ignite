@@ -502,7 +502,11 @@ public class GridDhtPartitionDemander {
 
         ClusterNode node = cctx.node(id);
 
-        assert node != null;
+        if (node == null) {
+            fut.cancel(id);
+
+            return;
+        }
 
         if (log.isDebugEnabled())
             log.debug("Received supply message: " + supply);

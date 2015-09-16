@@ -94,7 +94,6 @@ class GridDhtPartitionSupplier {
      *
      */
     void stop() {
-        top = null;
     }
 
     /**
