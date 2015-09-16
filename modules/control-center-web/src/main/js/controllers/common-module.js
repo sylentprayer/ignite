@@ -105,7 +105,14 @@ controlCenterModule.service('$common', [
         var msgModal = undefined;
 
         function errorMessage(errMsg) {
-            return errMsg ? errMsg : 'Internal server error.';
+            if (errMsg) {
+                if (errMsg.hasOwnProperty('message'))
+                    return errMsg.message;
+
+                return errMsg;
+            }
+
+            return 'Internal server error.';
         }
 
         function showError(msg, placement, container) {
