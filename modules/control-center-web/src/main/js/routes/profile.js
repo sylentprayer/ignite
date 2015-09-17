@@ -42,8 +42,7 @@ function _updateUser(res, user, params) {
     if (params.token)
         user.token = params.token;
 
-
-    if (params.userName || params.email || params.token)
+    if (params.userName || params.email || params.token || params.newPassword)
         user.save(function (err) {
             if (err)
                 // TODO IGNITE-843 Send error to admin.
@@ -51,6 +50,8 @@ function _updateUser(res, user, params) {
 
             res.json(user);
         });
+    else
+        res.status(200);
 }
 
 function _checkUserEmailAndUpdate(res, user, params) {

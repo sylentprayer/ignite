@@ -16,7 +16,7 @@
  */
 
 // Controller for Profile screen.
-controlCenterModule.controller('profileController', ['$scope', '$http', '$common', function ($scope, $http, $common) {
+controlCenterModule.controller('profileController', ['$scope', '$http', '$common', '$focus', function ($scope, $http, $common, $focus) {
     $scope.profileUser = angular.copy($scope.user);
 
     if ($scope.profileUser && !$scope.profileUser.token)
@@ -68,11 +68,16 @@ controlCenterModule.controller('profileController', ['$scope', '$http', '$common
                 }).success(function (user) {
                     $common.showInfo('Profile saved.');
 
+                    profile.newPassword = null;
+                    profile.confirmPassword = null;
+
                     if (changeUsername)
                         $scope.user.username = userName;
 
                     if (changeEmail)
                         $scope.user.email = email;
+
+                    $focus('profile-username');
                 }).error(function (err) {
                     $common.showError('Failed to save profile: ' + $common.errorMessage(err));
                 });
