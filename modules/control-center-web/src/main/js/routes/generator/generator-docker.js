@@ -33,22 +33,14 @@ $generatorDocker.clusterDocker = function (cluster, os) {
         '  maven \\\n' +
         '  git\n' +
         '\n' +
-        '# Install Oracle JDK.\n' +
-        'RUN mkdir /opt/jdk\n' +
+        '# Install Java. \n' +
+        'RUN \\\n' +
+        'apt-get update && \\\n' +
+        'apt-get install -y openjdk-7-jdk && \\\n' +
+        'rm -rf /var/lib/apt/lists/*\n' +
         '\n' +
-        'RUN wget --header \"Cookie: oraclelicense=accept-securebackup-cookie\" \\\n' +
-        '  http://download.oracle.com/otn-pub/java/jdk/7u79-b15/jdk-7u79-linux-x64.tar.gz\n' +
-        '\n' +
-        'RUN tar -zxf jdk-7u79-linux-x64.tar.gz -C /opt/jdk\n' +
-        '\n' +
-        'RUN rm jdk-7u79-linux-x64.tar.gz\n' +
-        '\n' +
-        'RUN update-alternatives --install /usr/bin/java java /opt/jdk/jdk1.7.0_79/bin/java 100\n' +
-        '\n' +
-        'RUN update-alternatives --install /usr/bin/javac javac /opt/jdk/jdk1.7.0_79/bin/javac 100\n' +
-        '\n' +
-        '# Sets java variables.\n' +
-        'ENV JAVA_HOME /opt/jdk/jdk1.7.0_79/\n' +
+        '# Define commonly used JAVA_HOME variable.\n' +
+        'ENV JAVA_HOME /usr/lib/jvm/java-7-openjdk-amd64\n' +
         '\n' +
         '# Create working directory\n' +
         'WORKDIR /home\n' +
