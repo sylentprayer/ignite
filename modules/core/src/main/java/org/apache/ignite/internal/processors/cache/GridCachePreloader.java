@@ -149,8 +149,9 @@ public interface GridCachePreloader {
     /**
      * Handles Demand message.
      *
+     * @param idx Index.
      * @param id Node Id.
      * @param d Demand message.
      */
-    public void handleDemandMessage(UUID id, GridDhtPartitionDemandMessage d);
+    public void handleDemandMessage(int idx, UUID id, GridDhtPartitionDemandMessage d);
 }

@@ -24,8 +24,13 @@ import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.events.CacheRebalancingEvent;
+import org.apache.ignite.events.DiscoveryEvent;
+import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
 import org.apache.ignite.internal.managers.deployment.GridDeploymentInfo;
+import org.apache.ignite.internal.managers.eventstorage.GridLocalEventListener;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
 import org.apache.ignite.internal.processors.cache.GridCacheEntryInfo;
@@ -41,6 +46,9 @@ import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.jsr166.ConcurrentHashMap8;
 
+import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_STOPPED;
+import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
+import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.OWNING;
 
 /**
@@ -63,10 +71,10 @@ class GridDhtPartitionSupplier {
     private IgnitePredicate<GridCacheEntryInfo> preloadPred;
 
     /** Supply context map. */
-    private ConcurrentHashMap8<T2, SupplyContext> scMap = new ConcurrentHashMap8<>();
+    private final ConcurrentHashMap8<T2, SupplyContext> scMap = new ConcurrentHashMap8<>();
 
-    /** Done map. */
-    private ConcurrentHashMap8<T2, Boolean> doneMap = new ConcurrentHashMap8<>();
+    /** Rebalancing listener. */
+    private GridLocalEventListener lsnr;
 
     /**
      * @param cctx Cache context.
@@ -87,6 +95,31 @@ class GridDhtPartitionSupplier {
      *
      */
     void start() {
+        lsnr = new GridLocalEventListener() {
+            @Override public void onEvent(Event evt) {
+                int lsnrCnt = cctx.gridConfig().getRebalanceThreadPoolSize();
+
+                for (int idx = 0; idx < lsnrCnt; idx++) {
+                    ClusterNode node;
+                    if (evt instanceof CacheRebalancingEvent)
+                        node = ((CacheRebalancingEvent)evt).discoveryNode();
+                    else if (evt instanceof DiscoveryEvent)
+                        node = ((DiscoveryEvent)evt).eventNode();
+                    else {
+                        assert false;
+
+                        return;
+                    }
+
+                    T2<UUID, Integer> scId = new T2<>(node.id(), idx);
+
+                    tryClearContext(scMap, scId, log);
+                }
+            }
+        };
+
+        cctx.events().addListener(lsnr, EVT_NODE_LEFT, EVT_NODE_FAILED, EVT_CACHE_REBALANCE_STOPPED);
+
         startOldListeners();
     }
 
@@ -94,6 +127,38 @@ class GridDhtPartitionSupplier {
      *
      */
     void stop() {
+        cctx.events().removeListener(lsnr);
+
+        stopOldListeners();
+    }
+
+    /**
+     * Clear context by id.
+     *
+     * @param map Context map.
+     * @param scId Context id.
+     * @param log Logger.
+     */
+    private static void tryClearContext(
+        ConcurrentHashMap8<T2, SupplyContext> map,
+        T2<UUID, Integer> scId,
+        IgniteLogger log) {
+        SupplyContext sc = map.get(scId);
+
+        if (sc != null) {
+            Iterator it = sc.entryIt;
+
+            if (it != null && it instanceof GridCloseableIterator && !((GridCloseableIterator)it).isClosed()) {
+                try {
+                    ((GridCloseableIterator)it).close();//todo: is it ok to close twice?
+                }
+                catch (IgniteCheckedException e) {
+                    log.error("Iterator close failed.", e);
+                }
+            }
+        }
+
+        map.remove(scId, sc);
     }
 
     /**
@@ -107,9 +172,10 @@ class GridDhtPartitionSupplier {
 
     /**
      * @param d Demand message.
+     * @param idx Index.
      * @param id Node uuid.
      */
-    public void handleDemandMessage(UUID id, GridDhtPartitionDemandMessage d) {
+    public void handleDemandMessage(int idx, UUID id, GridDhtPartitionDemandMessage d) {
         assert d != null;
         assert id != null;
 
@@ -119,22 +185,24 @@ class GridDhtPartitionSupplier {
         GridDhtPartitionSupplyMessageV2 s = new GridDhtPartitionSupplyMessageV2(d.workerId(),
             d.updateSequence(), cctx.cacheId(), d.topologyVersion());
 
-        long preloadThrottle = cctx.config().getRebalanceThrottle();
-
         ClusterNode node = cctx.discovery().node(id);
 
-        T2<UUID, Object> scId = new T2<>(id, d.topic());//todo remove topic.
+        T2<UUID, Integer> scId = new T2<>(id, idx);
 
         try {
-            if (!d.partitions().isEmpty()) {//Only initial request contains partitions.
-                doneMap.remove(scId);
-                scMap.remove(scId);
+            SupplyContext sctx = scMap.get(scId);
+
+            if (sctx == null) {
+                if (d.partitions().isEmpty())
+                    return;
             }
+            else {
+                if (!sctx.top.equals(d.topologyVersion())) {
+                    tryClearContext(scMap, scId, log);
 
-            SupplyContext sctx = scMap.remove(scId);
-
-            if (doneMap.get(scId) != null)
-                return;
+                    sctx = scMap.get(scId);
+                }
+            }
 
             long bCnt = 0;
 
@@ -205,21 +273,19 @@ class GridDhtPartitionSupplier {
                             }
 
                             if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
-                                if (!reply(node, d, s))
-                                    return;
-
-                                // Throttle preloading.
-                                if (preloadThrottle > 0)
-                                    U.sleep(preloadThrottle);
-
                                 if (++bCnt >= maxBatchesCnt) {
-                                    saveSupplyContext(scId, phase, partIt, part, entIt, swapLsnr);
+                                    saveSupplyContext(scId, phase, partIt, part, entIt, swapLsnr, d.topologyVersion());
 
                                     swapLsnr = null;
+
+                                    reply(node, d, s);
 
                                     return;
                                 }
                                 else {
+                                    if (!reply(node, d, s))
+                                        return;
+
                                     s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
                                         cctx.cacheId(), d.topologyVersion());
                                 }
@@ -244,10 +310,17 @@ class GridDhtPartitionSupplier {
                     }
 
                     if (phase == 1) {
-                        if (sctx != null)
-                            sctx.entryIt = null;
-
                         phase = 2;
+
+                        if (sctx != null) {
+                            sctx = new SupplyContext(
+                                phase,
+                                partIt,
+                                null,
+                                swapLsnr,
+                                part,
+                                d.topologyVersion());
+                        }
                     }
 
                     if (phase == 2 && cctx.isSwapOrOffheapEnabled()) {
@@ -276,21 +349,19 @@ class GridDhtPartitionSupplier {
                                 }
 
                                 if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
-                                    if (!reply(node, d, s))
-                                        return;
-
-                                    // Throttle preloading.
-                                    if (preloadThrottle > 0)
-                                        U.sleep(preloadThrottle);
-
                                     if (++bCnt >= maxBatchesCnt) {
-                                        saveSupplyContext(scId, phase, partIt, part, iter, swapLsnr);
+                                        saveSupplyContext(scId, phase, partIt, part, iter, swapLsnr, d.topologyVersion());
 
                                         swapLsnr = null;
+
+                                        reply(node, d, s);
 
                                         return;
                                     }
                                     else {
+                                        if (!reply(node, d, s))
+                                            return;
+
                                         s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
                                             cctx.cacheId(), d.topologyVersion());
                                     }
@@ -337,7 +408,7 @@ class GridDhtPartitionSupplier {
                                 }
                             }
 
-                            iter.close();//todo close at contexts clear
+                            iter.close();
 
                             if (partMissing)
                                 continue;
@@ -354,10 +425,17 @@ class GridDhtPartitionSupplier {
                     }
 
                     if (phase == 2) {
-                        if (sctx != null)
-                            sctx.entryIt = null;
-
                         phase = 3;
+
+                        if (sctx != null) {
+                            sctx = new SupplyContext(
+                                phase,
+                                partIt,
+                                null,
+                                null,
+                                part,
+                                d.topologyVersion());
+                        }
                     }
 
                     if (phase == 3 && swapLsnr != null) {
@@ -383,19 +461,19 @@ class GridDhtPartitionSupplier {
                             }
 
                             if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
-                                if (!reply(node, d, s))
-                                    return;
-
-                                // Throttle preloading.
-                                if (preloadThrottle > 0)
-                                    U.sleep(preloadThrottle);
-
                                 if (++bCnt >= maxBatchesCnt) {
-                                    saveSupplyContext(scId, phase, partIt, part, lsnrIt, swapLsnr);
+                                    saveSupplyContext(scId, phase, partIt, part, lsnrIt, swapLsnr, d.topologyVersion());
+
+                                    swapLsnr = null;
+
+                                    reply(node, d, s);
 
                                     return;
                                 }
                                 else {
+                                    if (!reply(node, d, s))
+                                        return;
+
                                     s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
                                         cctx.cacheId(), d.topologyVersion());
                                 }
@@ -429,8 +507,6 @@ class GridDhtPartitionSupplier {
             }
 
             reply(node, d, s);
-
-            doneMap.put(scId, true);
         }
         catch (IgniteCheckedException e) {
             U.error(log, "Failed to send partition supply message to node: " + id, e);
@@ -452,6 +528,10 @@ class GridDhtPartitionSupplier {
                 log.debug("Replying to partition demand [node=" + n.id() + ", demand=" + d + ", supply=" + s + ']');
 
             cctx.io().sendOrderedMessage(n, d.topic(), s, cctx.ioPolicy(), d.timeout());
+
+            // Throttle preloading.
+            if (cctx.config().getRebalanceThrottle() > 0)
+                U.sleep(cctx.config().getRebalanceThrottle());
 
             return true;
         }
@@ -476,8 +556,9 @@ class GridDhtPartitionSupplier {
         int phase,
         Iterator<Integer> partIt,
         int part,
-        Iterator<?> entryIt, GridCacheEntryInfoCollectSwapListener swapLsnr) {
-        scMap.put(t, new SupplyContext(phase, partIt, entryIt, swapLsnr, part));
+        Iterator<?> entryIt, GridCacheEntryInfoCollectSwapListener swapLsnr,
+        AffinityTopologyVersion top) {
+        scMap.put(t, new SupplyContext(phase, partIt, entryIt, swapLsnr, part, top));
     }
 
     /**
@@ -485,19 +566,22 @@ class GridDhtPartitionSupplier {
      */
     private static class SupplyContext {
         /** Phase. */
-        private int phase;
+        private final int phase;
 
         /** Partition iterator. */
-        private Iterator<Integer> partIt;
+        private final Iterator<Integer> partIt;
 
         /** Entry iterator. */
-        private Iterator<?> entryIt;
+        private final Iterator<?> entryIt;
 
         /** Swap listener. */
-        private GridCacheEntryInfoCollectSwapListener swapLsnr;
+        private final GridCacheEntryInfoCollectSwapListener swapLsnr;
 
         /** Partition. */
-        int part;
+        private final int part;
+
+        /** Topology version. */
+        private final AffinityTopologyVersion top;
 
         /**
          * @param phase Phase.
@@ -507,25 +591,33 @@ class GridDhtPartitionSupplier {
          * @param part Partition.
          */
         public SupplyContext(int phase, Iterator<Integer> partIt, Iterator<?> entryIt,
-            GridCacheEntryInfoCollectSwapListener swapLsnr, int part) {
+            GridCacheEntryInfoCollectSwapListener swapLsnr, int part, AffinityTopologyVersion top) {
             this.phase = phase;
             this.partIt = partIt;
             this.entryIt = entryIt;
             this.swapLsnr = swapLsnr;
             this.part = part;
+            this.top = top;
         }
     }
 
     @Deprecated//Backward compatibility. To be removed in future.
     public void startOldListeners() {
-        if (!cctx.kernalContext().clientNode()) {
-            int poolSize = cctx.rebalanceEnabled() ? cctx.config().getRebalanceThreadPoolSize() : 0;
+        if (!cctx.kernalContext().clientNode() && cctx.rebalanceEnabled()) {
 
             cctx.io().addHandler(cctx.cacheId(), GridDhtPartitionDemandMessage.class, new CI2<UUID, GridDhtPartitionDemandMessage>() {
                 @Override public void apply(UUID id, GridDhtPartitionDemandMessage m) {
                     processOldDemandMessage(m, id);
                 }
             });
+        }
+    }
+
+    @Deprecated//Backward compatibility. To be removed in future.
+    public void stopOldListeners() {
+        if (!cctx.kernalContext().clientNode() && cctx.rebalanceEnabled()) {
+
+            cctx.io().removeHandler(cctx.cacheId(), GridDhtPartitionDemandMessage.class);
         }
     }
 

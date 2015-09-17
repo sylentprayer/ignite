@@ -126,7 +126,7 @@ public class GridCachePreloaderAdapter implements GridCachePreloader {
     }
 
     /** {@inheritDoc} */
-    @Override public void handleDemandMessage(UUID id, GridDhtPartitionDemandMessage d) {
+    @Override public void handleDemandMessage(int idx, UUID id, GridDhtPartitionDemandMessage d) {
         // No-op.
     }
 
