@@ -28,7 +28,6 @@ $ignite-darck-border-color: #aaa;
 $ignite-border-bottom-color: $brand-primary;
 $ignite-background-color: #fff;
 $ignite-background-dark-color: #eee;
-$ignite-phone-color: #f9f9f9;
 $ignite-header-color: #555;
 $ignite-invalid-color: $brand-primary;
 
@@ -62,10 +61,6 @@ a.active {
 
 .border-right {
     box-shadow: 1px 0 0 0 $ignite-background-dark-color;
-}
-
-.theme-line {
-    background-color: $ignite-phone-color;
 }
 
 .theme-line header {
