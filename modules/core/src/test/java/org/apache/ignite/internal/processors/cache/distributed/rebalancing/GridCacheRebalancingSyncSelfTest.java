@@ -184,11 +184,23 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         startGrid(1);
 
+        waitForRebalancing(0, 2);
         waitForRebalancing(1, 2);
 
-        long spend = (System.currentTimeMillis() - start) / 1000;
-
         stopGrid(0);
+
+        waitForRebalancing(1, 3);
+
+        startGrid(2);
+
+        waitForRebalancing(1, 4);
+        waitForRebalancing(2, 4);
+
+        stopGrid(2);
+
+        waitForRebalancing(1, 5);
+
+        long spend = (System.currentTimeMillis() - start) / 1000;
 
         checkData(grid(1));
 
