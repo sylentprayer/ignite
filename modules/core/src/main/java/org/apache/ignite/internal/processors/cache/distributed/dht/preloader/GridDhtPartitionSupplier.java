@@ -150,7 +150,10 @@ class GridDhtPartitionSupplier {
 
             if (it != null && it instanceof GridCloseableIterator && !((GridCloseableIterator)it).isClosed()) {
                 try {
-                    ((GridCloseableIterator)it).close();//todo: is it ok to close twice?
+                    synchronized (map) {
+                        if (!((GridCloseableIterator)it).isClosed())
+                            ((GridCloseableIterator)it).close();
+                    }
                 }
                 catch (IgniteCheckedException e) {
                     log.error("Iterator close failed.", e);
