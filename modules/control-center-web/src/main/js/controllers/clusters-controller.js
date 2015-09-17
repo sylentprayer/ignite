@@ -418,7 +418,7 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
         };
 
         // Copy cluster with new name.
-        $scope.copyItem = function () {
+        $scope.cloneItem = function () {
             $table.tableReset();
 
             if (validate($scope.backupItem))

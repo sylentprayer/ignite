@@ -992,7 +992,7 @@ controlCenterModule.service('$copy', function ($modal, $rootScope, $q) {
         copyModal.hide();
     };
 
-    var copyModal = $modal({templateUrl: '/copy', scope: scope, placement: 'center', show: false});
+    var copyModal = $modal({templateUrl: '/clone', scope: scope, placement: 'center', show: false});
 
     var parentShow = copyModal.show;
 
@@ -1836,6 +1836,5 @@ controlCenterModule.controller('notebooks', ['$scope', '$modal', '$window', '$ht
 
 // Navigation bar controller.
 controlCenterModule.controller('save-remove', ['$scope', function ($scope) {
-    $scope.saveDropdown = [{ 'text': 'Copy', 'click': 'copyItem()'}];
     $scope.removeDropdown = [{ 'text': 'Remove All', 'click': 'removeAllItems()'}];
 }]);

@@ -32,7 +32,7 @@ block content
                 +main-table('Caches:', 'caches', 'cacheName', 'selectItem(row)', '{{$index + 1}}) {{row.name}}, {{row.cacheMode | displayValue:cacheModes:"Cache mode not set"}}, {{row.atomicityMode | displayValue:atomicities:"Cache atomicity not set"}}')
                 .padding-top-dflt(bs-affix)
                     .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new caches')
-                        button.btn.btn-primary(id='new-item' ng-click='createItem()') New
+                        button.btn.btn-primary(id='new-item' ng-click='createItem()') Add cache
                     +save-remove-buttons('cache')
                     br
                     hr

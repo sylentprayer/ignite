@@ -32,7 +32,7 @@ block content
                 +main-table('Types metadata:', 'metadatas', 'metadataName', 'selectItem(row)', '{{$index + 1}}) {{row.valueType}}')
                 .padding-top-dflt(bs-affix)
                     .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new metadata')
-                        button.btn.btn-primary(id='new-item' ng-click='createItem()') New
+                        button.btn.btn-primary(id='new-item' ng-click='createItem()') Add metadata
                     .panel-tip-container(bs-tooltip data-title='Load new metadata from database' data-placement='bottom')
                         button.btn.btn-primary(ng-click='showLoadMetadataModal()') Load from database
                     +save-remove-buttons('metadata')

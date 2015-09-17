@@ -44,10 +44,10 @@ block container
                             label {{profileUser.token}}
                             i.tipLabel.fa.fa-refresh(ng-click='generateToken()' bs-tooltip data-title='Generate random security token')
                         .details-row
-                            .checkbox
-                                label
-                                    input(type='checkbox' ng-model='profileUser.changePassword')
-                                    | Change password
+                            .advanced-options
+                                i.fa.fa-chevron-circle-up(ng-show='profileUser.changePassword' ng-click='profileUser.changePassword = ! profileUser.changePassword')
+                                i.fa.fa-chevron-circle-down(ng-show='!profileUser.changePassword' ng-click='profileUser.changePassword = ! profileUser.changePassword')
+                                a(ng-click='profileUser.changePassword = ! profileUser.changePassword') {{profileUser.changePassword ? 'Cancel password changing...' : 'Change password...'}}
                         div(ng-if='profileUser.changePassword')
                             .details-row
                                 +lbl('New password:')

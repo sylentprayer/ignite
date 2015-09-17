@@ -496,7 +496,7 @@ controlCenterModule.controller('cachesController', [
             };
 
             // Save cache with new name.
-            $scope.copyItem = function () {
+            $scope.cloneItem = function () {
                 $table.tableReset();
 
                 if (validate($scope.backupItem))

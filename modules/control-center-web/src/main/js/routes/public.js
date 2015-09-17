@@ -44,8 +44,8 @@ router.get('/confirm/batch', function (req, res) {
 });
 
 // GET copy dialog.
-router.get('/copy', function (req, res) {
-    res.render('templates/copy', {});
+router.get('/clone', function (req, res) {
+    res.render('templates/clone', {});
 });
 
 /* GET login dialog. */
@@ -241,6 +241,8 @@ router.get('/password/reset/:token', function (req, res) {
             data.error = 'Invalid token for password reset!';
         else if (err)
             data.error = err;
+        else
+            data.email = user.email;
 
         res.render('reset', data);
     });
