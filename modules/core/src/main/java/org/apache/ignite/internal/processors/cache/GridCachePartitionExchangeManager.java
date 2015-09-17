@@ -1412,6 +1412,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
         private static final long serialVersionUID = 0L;
 
         /** */
+        @GridToStringInclude
         private AffinityTopologyVersion topVer;
 
         /**
@@ -1431,6 +1432,11 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                 readyFuts.remove(topVer, this);
 
             return done;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(AffinityReadyFuture.class, this, super.toString());
         }
     }
 }
