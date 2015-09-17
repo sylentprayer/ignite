@@ -222,9 +222,6 @@ public class TcpDiscoverySpi extends IgniteSpiAdapter implements DiscoverySpi, T
     /** Failure detection timeout feature minor version. */
     final static byte FAILURE_DETECTION_MINOR_VER = 4;
 
-    /** */
-    public static final IgniteProductVersion DISCOVERY_DATA_COLLECT_ON_FINISH = IgniteProductVersion.fromString("1.4.0");
-
     /** Failure detection timeout feature maintainance version. */
     final static byte FAILURE_DETECTION_MAINT_VER = 1;
 

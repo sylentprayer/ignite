@@ -3186,9 +3186,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                     if (data != null)
                         spi.onExchange(node.id(), node.id(), data, U.gridClassLoader());
 
-                    // Collect discovery data the old way for older version nodes.
-                    if (TcpDiscoverySpi.DISCOVERY_DATA_COLLECT_ON_FINISH.compareTo(node.version()) > 0)
-                        msg.addDiscoveryData(locNodeId, spi.collectExchangeData(node.id()));
+                    msg.addDiscoveryData(locNodeId, spi.collectExchangeData(node.id()));
                 }
 
                 if (log.isDebugEnabled())
@@ -3255,12 +3253,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
 
                 // Notify outside of synchronized block.
-                // Notify on node added message only if joining node is an old node.
-                if (TcpDiscoverySpi.DISCOVERY_DATA_COLLECT_ON_FINISH.compareTo(node.version()) > 0) {
-                    if (dataMap != null) {
-                        for (Map.Entry<UUID, Map<Integer, byte[]>> entry : dataMap.entrySet())
-                            spi.onExchange(node.id(), entry.getKey(), entry.getValue(), U.gridClassLoader());
-                    }
+                if (dataMap != null) {
+                    for (Map.Entry<UUID, Map<Integer, byte[]>> entry : dataMap.entrySet())
+                        spi.onExchange(node.id(), entry.getKey(), entry.getValue(), U.gridClassLoader());
                 }
             }
 
@@ -3337,12 +3332,6 @@ class ServerImpl extends TcpDiscoveryImpl {
             }
 
             if (msg.verified() && !locNodeId.equals(nodeId) && spiStateCopy() == CONNECTED && fireEvt) {
-                if (TcpDiscoverySpi.DISCOVERY_DATA_COLLECT_ON_FINISH.compareTo(node.version()) <= 0) {
-                    Map<Integer, byte[]> data = spi.collectExchangeData(node.id());
-
-                    msg.addDiscoveryData(locNodeId, data);
-                }
-
                 spi.stats.onNodeJoined();
 
                 // Make sure that node with greater order will never get EVT_NODE_JOINED
@@ -3394,16 +3383,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                     spiState = CONNECTED;
 
                     mux.notifyAll();
-                }
-
-                // Notify outside of synchronized block.
-                if (TcpDiscoverySpi.DISCOVERY_DATA_COLLECT_ON_FINISH.compareTo(node.version()) <= 0) {
-                    Map<UUID, Map<Integer, byte[]>> dataMap = msg.oldNodesDiscoveryData();
-
-                    if (dataMap != null) {
-                        for (Map.Entry<UUID, Map<Integer, byte[]>> entry : dataMap.entrySet())
-                            spi.onExchange(node.id(), entry.getKey(), entry.getValue(), U.gridClassLoader());
-                    }
                 }
 
                 // Discovery manager must create local joined event before spiStart completes.

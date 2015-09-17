@@ -17,7 +17,6 @@
 
 package org.apache.ignite.spi.discovery.tcp.messages;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
@@ -47,9 +46,6 @@ public class TcpDiscoveryNodeAddFinishedMessage extends TcpDiscoveryAbstractMess
     @GridToStringExclude
     private Map<String, Object> clientNodeAttrs;
 
-    /** Discovery data from old nodes. */
-    private Map<UUID, Map<Integer, byte[]>> oldNodesDiscoData;
-
     /**
      * Constructor.
      *
@@ -60,8 +56,6 @@ public class TcpDiscoveryNodeAddFinishedMessage extends TcpDiscoveryAbstractMess
         super(creatorNodeId);
 
         this.nodeId = nodeId;
-
-        oldNodesDiscoData = new LinkedHashMap<>();
     }
 
     /**
@@ -78,24 +72,6 @@ public class TcpDiscoveryNodeAddFinishedMessage extends TcpDiscoveryAbstractMess
      */
     public Map<UUID, Map<Integer, byte[]>> clientDiscoData() {
         return clientDiscoData;
-    }
-
-    /**
-     * @return Discovery data from old nodes.
-     */
-    public Map<UUID, Map<Integer, byte[]>> oldNodesDiscoveryData() {
-        return oldNodesDiscoData;
-    }
-
-    /**
-     * @param nodeId Node ID.
-     * @param discoData Discovery data to add.
-     */
-    public void addDiscoveryData(UUID nodeId, Map<Integer, byte[]> discoData) {
-        // Old nodes disco data may be null if message
-        // makes more than 1 pass due to stopping of the nodes in topology.
-        if (oldNodesDiscoData != null)
-            oldNodesDiscoData.put(nodeId, discoData);
     }
 
     /**
