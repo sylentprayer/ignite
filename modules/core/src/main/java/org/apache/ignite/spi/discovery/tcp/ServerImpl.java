@@ -17,40 +17,130 @@
 
 package org.apache.ignite.spi.discovery.tcp;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.events.*;
-import org.apache.ignite.internal.processors.security.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.future.*;
-import org.apache.ignite.internal.util.io.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.security.*;
-import org.apache.ignite.spi.*;
-import org.apache.ignite.spi.discovery.*;
-import org.apache.ignite.spi.discovery.tcp.internal.*;
-import org.apache.ignite.spi.discovery.tcp.messages.*;
-import org.jetbrains.annotations.*;
-import org.jsr166.*;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
+import java.net.ConnectException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.net.ssl.SSLException;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cache.CacheMetrics;
+import org.apache.ignite.cluster.ClusterMetrics;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.IgniteFutureTimeoutCheckedException;
+import org.apache.ignite.internal.IgniteInterruptedCheckedException;
+import org.apache.ignite.internal.IgniteNodeAttributes;
+import org.apache.ignite.internal.events.DiscoveryCustomEvent;
+import org.apache.ignite.internal.processors.security.SecurityContext;
+import org.apache.ignite.internal.util.GridConcurrentHashSet;
+import org.apache.ignite.internal.util.IgniteUtils;
+import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.io.GridByteArrayOutputStream;
+import org.apache.ignite.internal.util.lang.GridTuple;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.internal.util.typedef.internal.LT;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.lang.IgniteProductVersion;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.plugin.security.SecurityCredentials;
+import org.apache.ignite.plugin.security.SecurityPermissionSet;
+import org.apache.ignite.spi.IgniteNodeValidationResult;
+import org.apache.ignite.spi.IgniteSpiContext;
+import org.apache.ignite.spi.IgniteSpiException;
+import org.apache.ignite.spi.IgniteSpiOperationTimeoutHelper;
+import org.apache.ignite.spi.IgniteSpiThread;
+import org.apache.ignite.spi.discovery.DiscoverySpiCustomMessage;
+import org.apache.ignite.spi.discovery.DiscoverySpiListener;
+import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
+import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNodesRing;
+import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryAbstractMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryAuthFailedMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryCheckFailedMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryClientAckResponse;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryClientHeartbeatMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryClientPingRequest;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryClientPingResponse;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryClientReconnectMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryConnectionCheckMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryCustomEventMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryDiscardMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryDuplicateIdMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryHandshakeRequest;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryHandshakeResponse;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryHeartbeatMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryJoinRequestMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryLoopbackProblemMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryNodeAddFinishedMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryNodeAddedMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryNodeFailedMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryNodeLeftMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryPingRequest;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryPingResponse;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryRedirectToClient;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryStatusCheckMessage;
+import org.jetbrains.annotations.Nullable;
+import org.jsr166.ConcurrentHashMap8;
 
-import javax.net.ssl.*;
-import java.io.*;
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-
-import static org.apache.ignite.events.EventType.*;
-import static org.apache.ignite.internal.IgniteNodeAttributes.*;
-import static org.apache.ignite.spi.IgnitePortProtocol.*;
-import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.*;
-import static org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryStatusCheckMessage.*;
+import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
+import static org.apache.ignite.events.EventType.EVT_NODE_JOINED;
+import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
+import static org.apache.ignite.events.EventType.EVT_NODE_METRICS_UPDATED;
+import static org.apache.ignite.events.EventType.EVT_NODE_SEGMENTED;
+import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_MARSHALLER;
+import static org.apache.ignite.spi.IgnitePortProtocol.TCP;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.AUTH_FAILED;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.CHECK_FAILED;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.CONNECTED;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.CONNECTING;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.DISCONNECTED;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.DISCONNECTING;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.DUPLICATE_ID;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.LEFT;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.LOOPBACK_PROBLEM;
+import static org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoverySpiState.STOPPING;
+import static org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryStatusCheckMessage.STATUS_OK;
+import static org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryStatusCheckMessage.STATUS_RECON;
 
 /**
  *
@@ -114,7 +204,7 @@ class ServerImpl extends TcpDiscoveryImpl {
     protected TcpDiscoverySpiState spiState = DISCONNECTED;
 
     /** Map with proceeding ping requests. */
-    private final ConcurrentMap<InetSocketAddress, IgniteInternalFuture<IgniteBiTuple<UUID, Boolean>>> pingMap =
+    private final ConcurrentMap<InetSocketAddress, GridPingFutureAdapter<IgniteBiTuple<UUID, Boolean>>> pingMap =
         new ConcurrentHashMap8<>();
 
     /**
@@ -388,12 +478,15 @@ class ServerImpl extends TcpDiscoveryImpl {
 
         TcpDiscoveryNode node = ring.node(nodeId);
 
-        if (node == null || !node.visible())
+        if (node == null)
+            return false;
+
+        if (!nodeAlive(nodeId))
             return false;
 
         boolean res = pingNode(node);
 
-        if (!res && !node.isClient()) {
+        if (!res && !node.isClient() && nodeAlive(nodeId)) {
             LT.warn(log, null, "Failed to ping node (status check will be initiated): " + nodeId);
 
             msgWorker.addMessage(new TcpDiscoveryStatusCheckMessage(locNode, node.id()));
@@ -421,14 +514,18 @@ class ServerImpl extends TcpDiscoveryImpl {
 
             node = ring.node(node.clientRouterNodeId());
 
-            if (node == null || !node.visible())
+            if (node == null || !nodeAlive(node.id()))
                 return false;
         }
 
         for (InetSocketAddress addr : spi.getNodeAddresses(node, U.sameMacs(locNode, node))) {
             try {
                 // ID returned by the node should be the same as ID of the parameter for ping to succeed.
-                IgniteBiTuple<UUID, Boolean> t = pingNode(addr, clientNodeId);
+                IgniteBiTuple<UUID, Boolean> t = pingNode(addr, node.id(), clientNodeId);
+
+                if (t == null)
+                    // Remote node left topology.
+                    return false;
 
                 boolean res = node.id().equals(t.get1()) && (clientNodeId == null || t.get2());
 
@@ -453,12 +550,14 @@ class ServerImpl extends TcpDiscoveryImpl {
      * Pings the node by its address to see if it's alive.
      *
      * @param addr Address of the node.
+     * @param nodeId Node ID to ping. In case when client node ID is not null this node ID is an ID of the router node.
      * @param clientNodeId Client node ID.
-     * @return ID of the remote node and "client exists" flag if node alive.
+     * @return ID of the remote node and "client exists" flag if node alive or {@code null} if the remote node has
+     *         left a topology during the ping process.
      * @throws IgniteCheckedException If an error occurs.
      */
-    private IgniteBiTuple<UUID, Boolean> pingNode(InetSocketAddress addr, @Nullable UUID clientNodeId)
-        throws IgniteCheckedException {
+    private @Nullable IgniteBiTuple<UUID, Boolean> pingNode(InetSocketAddress addr, @Nullable UUID nodeId,
+        @Nullable UUID clientNodeId) throws IgniteCheckedException {
         assert addr != null;
 
         UUID locNodeId = getLocalNodeId();
@@ -488,9 +587,9 @@ class ServerImpl extends TcpDiscoveryImpl {
             return F.t(getLocalNodeId(), clientPingRes);
         }
 
-        GridFutureAdapter<IgniteBiTuple<UUID, Boolean>> fut = new GridFutureAdapter<>();
+        GridPingFutureAdapter<IgniteBiTuple<UUID, Boolean>> fut = new GridPingFutureAdapter<>();
 
-        IgniteInternalFuture<IgniteBiTuple<UUID, Boolean>> oldFut = pingMap.putIfAbsent(addr, fut);
+        GridPingFutureAdapter<IgniteBiTuple<UUID, Boolean>> oldFut = pingMap.putIfAbsent(addr, fut);
 
         if (oldFut != null)
             return oldFut.get();
@@ -511,7 +610,11 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         long tstamp = U.currentTimeMillis();
 
-                        sock = spi.openSocket(addr, timeoutHelper);
+                        sock = spi.createSocket();
+
+                        fut.sock = sock;
+
+                        sock = spi.openSocket(sock, addr, timeoutHelper);
 
                         openedSock = true;
 
@@ -537,6 +640,16 @@ class ServerImpl extends TcpDiscoveryImpl {
                         return t;
                     }
                     catch (IOException | IgniteCheckedException e) {
+                        if (nodeId != null && !nodeAlive(nodeId)) {
+                            if (log.isDebugEnabled())
+                                log.debug("Failed to ping the node (has left or leaving topology): [nodeId=" + nodeId +
+                                    ']');
+
+                            fut.onDone((IgniteBiTuple<UUID, Boolean>)null);
+
+                            return null;
+                        }
+
                         if (errs == null)
                             errs = new ArrayList<>();
 
@@ -578,6 +691,21 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
     }
 
+    /**
+     * Interrupts all existed 'ping' request for the given node.
+     *
+     * @param node Node that may be pinged.
+     */
+    private void interruptPing(TcpDiscoveryNode node) {
+        for (InetSocketAddress addr : spi.getNodeAddresses(node)) {
+            GridPingFutureAdapter fut = pingMap.get(addr);
+
+            if (fut != null && fut.sock != null)
+                // Reference to the socket is not set to null. No need to assign it to a local variable.
+                U.closeQuiet(fut.sock);
+        }
+    }
+
     /** {@inheritDoc} */
     @Override public void disconnect() throws IgniteSpiException {
         spiStop0(true);
@@ -609,9 +737,31 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /** {@inheritDoc} */
-    @Override protected void onDataReceived() {
+    @Override protected void onMessageExchanged() {
         if (spi.failureDetectionTimeoutEnabled() && locNode != null)
-            locNode.lastDataReceivedTime(U.currentTimeMillis());
+            locNode.lastExchangeTime(U.currentTimeMillis());
+    }
+
+    /**
+     * Checks whether a node is alive or not.
+     *
+     * @param nodeId Node ID.
+     * @return {@code True} if node is in the ring and is not being removed from.
+     */
+    private boolean nodeAlive(UUID nodeId) {
+        // Is node alive or about to be removed from the ring?
+        TcpDiscoveryNode node = ring.node(nodeId);
+
+        boolean nodeAlive = node != null && node.visible();
+
+        if (nodeAlive) {
+            synchronized (mux) {
+                nodeAlive = !F.transform(failedNodes, F.node2id()).contains(nodeId) &&
+                    !F.transform(leavingNodes, F.node2id()).contains(nodeId);
+            }
+        }
+
+        return nodeAlive;
     }
 
     /**
@@ -1520,7 +1670,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         if (res == null) {
                             try {
-                                res = pingNode(addr, null).get1() != null;
+                                res = pingNode(addr, null, null).get1() != null;
                             }
                             catch (IgniteCheckedException e) {
                                 if (log.isDebugEnabled())
@@ -1875,9 +2025,13 @@ class ServerImpl extends TcpDiscoveryImpl {
             if (spi.ensured(msg))
                 msgHist.add(msg);
 
-            if (msg.senderNodeId() != null && !msg.senderNodeId().equals(getLocalNodeId()))
-                // Reset the flag.
+            if (msg.senderNodeId() != null && !msg.senderNodeId().equals(getLocalNodeId())) {
+                // Received a message from remote node.
+                onMessageExchanged();
+
+                // Reset the failure flag.
                 failureThresholdReached = false;
+            }
 
             spi.stats.onMessageProcessingFinished(msg);
         }
@@ -2236,6 +2390,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 spi.stats.onMessageSent(msg, U.currentTimeMillis() - tstamp);
 
                                 int res = spi.readReceipt(sock, timeoutHelper.nextTimeoutChunk(ackTimeout0));
+
+                                onMessageExchanged();
 
                                 if (log.isDebugEnabled())
                                     log.debug("Message has been sent to next node [msg=" + msg +
@@ -3325,6 +3481,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             if (msg.verified() && !locNodeId.equals(leavingNodeId)) {
                 TcpDiscoveryNode leftNode = ring.removeNode(leavingNodeId);
 
+                interruptPing(leavingNode);
+
                 assert leftNode != null;
 
                 if (log.isDebugEnabled())
@@ -3491,6 +3649,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
             if (msg.verified()) {
                 node = ring.removeNode(nodeId);
+
+                interruptPing(node);
 
                 assert node != null;
 
@@ -3775,9 +3935,17 @@ class ServerImpl extends TcpDiscoveryImpl {
                             else {
                                 int aliveCheck = clientNode.decrementAliveCheck();
 
-                                if (aliveCheck <= 0 && isLocalNodeCoordinator() && !failedNodes.contains(clientNode))
-                                    processNodeFailedMessage(new TcpDiscoveryNodeFailedMessage(locNodeId,
-                                        clientNode.id(), clientNode.internalOrder()));
+                                if (aliveCheck <= 0 && isLocalNodeCoordinator()) {
+                                    boolean failedNode;
+
+                                    synchronized (mux) {
+                                        failedNode = failedNodes.contains(clientNode);
+                                    }
+
+                                    if (!failedNode)
+                                        processNodeFailedMessage(new TcpDiscoveryNodeFailedMessage(locNodeId,
+                                            clientNode.id(), clientNode.internalOrder()));
+                                }
                             }
                         }
                     }
@@ -4055,12 +4223,15 @@ class ServerImpl extends TcpDiscoveryImpl {
          * Check connection aliveness status.
          */
         private void checkConnection() {
+            Boolean hasRemoteSrvNodes = null;
+
             if (spi.failureDetectionTimeoutEnabled() && !failureThresholdReached &&
-                U.currentTimeMillis() - locNode.lastDataReceivedTime() >= connCheckThreshold &&
-                ring.hasRemoteNodes() && spiStateCopy() == CONNECTED) {
+                U.currentTimeMillis() - locNode.lastExchangeTime() >= connCheckThreshold &&
+                spiStateCopy() == CONNECTED &&
+                (hasRemoteSrvNodes = ring.hasRemoteServerNodes())) {
 
                 log.info("Local node seems to be disconnected from topology (failure detection timeout " +
-                    "is reached): [failureDetectionTimeout=" + spi.failureDetectionTimeout() +
+                    "is reached) [failureDetectionTimeout=" + spi.failureDetectionTimeout() +
                     ", connCheckFreq=" + connCheckFreq + ']');
 
                 failureThresholdReached = true;
@@ -4074,7 +4245,10 @@ class ServerImpl extends TcpDiscoveryImpl {
             if (elapsed > 0)
                 return;
 
-            if (ring.hasRemoteNodes()) {
+            if (hasRemoteSrvNodes == null)
+                hasRemoteSrvNodes = ring.hasRemoteServerNodes();
+
+            if (hasRemoteSrvNodes) {
                 sendMessageAcrossRing(new TcpDiscoveryConnectionCheckMessage(locNode));
 
                 lastTimeConnCheckMsgSent = U.currentTimeMillis();
@@ -4689,26 +4863,6 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
 
         /**
-         * @param nodeId Node ID.
-         * @return {@code True} if node is in the ring and is not being removed from.
-         */
-        private boolean nodeAlive(UUID nodeId) {
-            // Is node alive or about to be removed from the ring?
-            TcpDiscoveryNode node = ring.node(nodeId);
-
-            boolean nodeAlive = node != null && node.visible();
-
-            if (nodeAlive) {
-                synchronized (mux) {
-                    nodeAlive = !F.transform(failedNodes, F.node2id()).contains(nodeId) &&
-                        !F.transform(leavingNodes, F.node2id()).contains(nodeId);
-                }
-            }
-
-            return nodeAlive;
-        }
-
-        /**
          * @param msg Join request message.
          * @param clientMsgWrk Client message worker to start.
          * @return Whether connection was successful.
@@ -5111,6 +5265,32 @@ class ServerImpl extends TcpDiscoveryImpl {
             bout.reset();
 
             spi.writeToSocket(sock, msg, bout, timeout);
+        }
+    }
+
+    /**
+     *
+     */
+    private static class GridPingFutureAdapter<R> extends GridFutureAdapter<R> {
+        /** Socket. */
+        private volatile Socket sock;
+
+        /**
+         * Returns socket associated with this ping future.
+         *
+         * @return Socket or {@code null} if no socket associated.
+         */
+        public Socket sock() {
+            return sock;
+        }
+
+        /**
+         * Associates socket with this ping future.
+         *
+         * @param sock Socket.
+         */
+        public void sock(Socket sock) {
+            this.sock = sock;
         }
     }
 }

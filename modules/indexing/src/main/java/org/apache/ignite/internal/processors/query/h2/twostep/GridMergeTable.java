@@ -17,15 +17,17 @@
 
 package org.apache.ignite.internal.processors.query.h2.twostep;
 
-import org.apache.ignite.internal.*;
-import org.h2.command.ddl.*;
-import org.h2.engine.*;
-import org.h2.index.*;
-import org.h2.message.*;
-import org.h2.result.*;
-import org.h2.table.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.UUID;
+import org.apache.ignite.internal.GridKernalContext;
+import org.h2.command.ddl.CreateTableData;
+import org.h2.engine.Session;
+import org.h2.index.Index;
+import org.h2.index.IndexType;
+import org.h2.message.DbException;
+import org.h2.result.Row;
+import org.h2.table.IndexColumn;
+import org.h2.table.TableBase;
 
 /**
  * Merge table for distributed queries.
@@ -33,9 +35,6 @@ import java.util.*;
 public class GridMergeTable extends TableBase {
     /** */
     private final GridKernalContext ctx;
-
-    /** */
-    private final ArrayList<Index> idxs = new ArrayList<>(1);
 
     /** */
     private final GridMergeIndex idx;
@@ -49,8 +48,6 @@ public class GridMergeTable extends TableBase {
 
         this.ctx = ctx;
         idx = new GridMergeIndexUnsorted(this, "merge_scan");
-
-        idxs.add(idx);
     }
 
     /**
@@ -124,7 +121,7 @@ public class GridMergeTable extends TableBase {
 
     /** {@inheritDoc} */
     @Override public ArrayList<Index> getIndexes() {
-        return idxs;
+        return null;
     }
 
     /** {@inheritDoc} */

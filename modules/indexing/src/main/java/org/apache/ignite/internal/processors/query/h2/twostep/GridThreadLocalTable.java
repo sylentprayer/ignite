@@ -17,16 +17,26 @@
 
 package org.apache.ignite.internal.processors.query.h2.twostep;
 
-import org.h2.api.*;
-import org.h2.command.ddl.*;
-import org.h2.engine.*;
-import org.h2.index.*;
-import org.h2.result.*;
-import org.h2.schema.*;
-import org.h2.table.*;
-import org.h2.value.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import org.h2.api.TableEngine;
+import org.h2.command.ddl.CreateTableData;
+import org.h2.engine.DbObject;
+import org.h2.engine.Session;
+import org.h2.index.Index;
+import org.h2.index.IndexType;
+import org.h2.message.DbException;
+import org.h2.result.Row;
+import org.h2.result.SearchRow;
+import org.h2.result.SortOrder;
+import org.h2.schema.Schema;
+import org.h2.table.Column;
+import org.h2.table.IndexColumn;
+import org.h2.table.PlanItem;
+import org.h2.table.Table;
+import org.h2.table.TableFilter;
+import org.h2.value.Value;
 
 /**
  * Thread local table wrapper for another table instance.
@@ -154,7 +164,7 @@ public class GridThreadLocalTable extends Table {
 
     /** {@inheritDoc} */
     @Override public String getTableType() {
-        return tbl.get().getTableType();
+        return EXTERNAL_TABLE_ENGINE;
     }
 
     /** {@inheritDoc} */
@@ -179,7 +189,7 @@ public class GridThreadLocalTable extends Table {
 
     /** {@inheritDoc} */
     @Override public long getMaxDataModificationId() {
-        return tbl.get().getMaxDataModificationId();
+        return 0;
     }
 
     /** {@inheritDoc} */
@@ -194,7 +204,7 @@ public class GridThreadLocalTable extends Table {
 
     /** {@inheritDoc} */
     @Override public boolean canDrop() {
-        return tbl.get().canDrop();
+        return false;
     }
 
     /** {@inheritDoc} */
@@ -204,12 +214,14 @@ public class GridThreadLocalTable extends Table {
 
     /** {@inheritDoc} */
     @Override public long getRowCountApproximation() {
-        return tbl.get().getRowCountApproximation();
+        Table t = tbl.get();
+
+        return t == null ? 0 : t.getRowCountApproximation();
     }
 
     /** {@inheritDoc} */
     @Override public long getDiskSpaceUsed() {
-        return tbl.get().getDiskSpaceUsed();
+        return 0;
     }
 
     /** {@inheritDoc} */
@@ -219,12 +231,17 @@ public class GridThreadLocalTable extends Table {
 
     /** {@inheritDoc} */
     @Override public String getDropSQL() {
-        return tbl.get().getDropSQL();
+        return "";
+    }
+
+    /** {@inheritDoc} */
+    @Override public void addDependencies(HashSet<DbObject> dependencies) {
+        // No-op. We should not have any dependencies to add.
     }
 
     /** {@inheritDoc} */
     @Override public void checkRename() {
-        tbl.get().checkRename();
+        throw DbException.getUnsupportedException("rename");
     }
 
     /**
