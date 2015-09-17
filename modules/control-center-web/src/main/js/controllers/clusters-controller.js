@@ -422,7 +422,7 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
             $table.tableReset();
 
             if (validate($scope.backupItem))
-                $copy.show($scope.backupItem.name).then(function (newName) {
+                $copy.confirm($scope.backupItem.name).then(function (newName) {
                     var item = angular.copy($scope.backupItem);
 
                     item._id = undefined;
@@ -438,7 +438,7 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
 
             var selectedItem = $scope.selectedItem;
 
-            $confirm.show('Are you sure you want to remove cluster: "' + selectedItem.name + '"?').then(
+            $confirm.confirm('Are you sure you want to remove cluster: "' + selectedItem.name + '"?').then(
                 function () {
                     $scope.ui.markPristine(0);
 
@@ -474,7 +474,7 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
         $scope.removeAllItems = function () {
             $table.tableReset();
 
-            $confirm.show('Are you sure you want to remove all clusters?').then(
+            $confirm.confirm('Are you sure you want to remove all clusters?').then(
                 function () {
                     $scope.ui.markPristine(0);
 

@@ -154,7 +154,7 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
     };
 
     $scope.removeNotebook = function () {
-        $confirm.show('Are you sure you want to remove notebook: "' + $scope.notebook.name + '"?').then(
+        $confirm.confirm('Are you sure you want to remove notebook: "' + $scope.notebook.name + '"?').then(
             function () {
                 $http.post('/notebooks/remove', {_id: $scope.notebook._id})
                     .success(function () {
@@ -236,7 +236,7 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
     };
 
     $scope.removeParagraph = function(paragraph) {
-        $confirm.show('Are you sure you want to remove paragraph: "' + paragraph.name + '"?').then(
+        $confirm.confirm('Are you sure you want to remove paragraph: "' + paragraph.name + '"?').then(
             function () {
                 var paragraph_idx = _.findIndex($scope.notebook.paragraphs, function (item) {
                     return paragraph == item;

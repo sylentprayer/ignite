@@ -857,7 +857,7 @@ controlCenterModule.service('$common', [
 controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
     var scope = $rootScope.$new();
 
-    var deferred;
+    var deferred = $q.defer();
 
     // Configure title of cancel button.
     scope.cancelTitle = 'Cancel';
@@ -870,14 +870,10 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
 
     var confirmModal = $modal({templateUrl: '/confirm', scope: scope, placement: 'center', show: false});
 
-    var parentShow = confirmModal.show;
-
-    confirmModal.show = function (content) {
+    confirmModal.confirm = function (content) {
         scope.content = content || 'Confirm deletion?';
 
-        deferred = $q.defer();
-
-        parentShow();
+        confirmModal.show();
 
         return deferred.promise;
     };
@@ -886,93 +882,84 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
 });
 
 // Service for confirm or skip several steps.
-controlCenterModule.service('$stepConfirm', function ($timeout, $modal, $rootScope, $q) {
+controlCenterModule.service('$stepConfirm', function ($rootScope, $modal,  $q) {
     var scope = $rootScope.$new();
 
-    var deferred;
-
-    scope.ui = {forAll: false};
+    scope.ui = {batchConfirmApplyToAll: false};
 
     var contentGenerator = function () {
         return 'No content';
     };
 
-    var itemsToConfirm = [];
+    var items = [];
 
     var curIx = 0;
 
-    function nextElement(skip) {
-        itemsToConfirm[curIx].skip = skip;
+    var deferred = $q.defer();
 
-        curIx += 1;
-
-        if (curIx >= modelArray.length) {
+    function _done(cancel) {
+        if (cancel)
+            deferred.reject('cancelled');
+        else
             deferred.resolve();
 
-            stepConfirmModal.hide();
-        }
+        stepConfirmModal.hide();
+    }
+
+    function _nextElement(skip) {
+        items[curIx].skip = skip;
+
+        curIx++;
+
+        if (curIx < items.length)
+            scope.content = contentGenerator(itemsToConfirm = [curIx]);
+        else
+            _done();
     }
 
     /**
      * Generate reject event on cancel for special event processing.
      */
     scope.batchConfirmCancel = function () {
-        deferred.reject('cancelled');
-
-        stepConfirmModal.hide();
+        _done(true);
     };
 
     scope.batchConfirmSkip = function () {
-        if (scope.ui.batchConfirmAll) {
+        if (scope.ui.batchConfirmApplyToAll) {
             for (var i = curIx; i < itemsToConfirm.length; i++)
                 itemsToConfirm[i].skip = true;
 
-            deferred.resolve();
-
-            stepConfirmModal.hide();
+            _done();
         }
         else
-            nextElement(true);
+            _nextElement(true);
     };
 
     scope.batchConfirmOverwrite = function () {
-        if (scope.ui.batchConfirmAll) {
-            deferred.resolve();
-
-            stepConfirmModal.hide();
-        }
+        if (scope.ui.batchConfirmApplyToAll)
+            _done();
         else
-            nextElement(false);
+            _nextElement(false);
     };
 
     var stepConfirmModal = $modal({templateUrl: '/confirm/batch', scope: scope, placement: 'center', show: false});
-
-    var parentShow = stepConfirmModal.show;
 
     /**
      * Show confirm all dialog.
      *
      * @param confirmMessageFx Function to generate a confirm message.
-     * @param model Array of element to process by confirm.
+     * @param itemsToConfirm Array of element to process by confirm.
      */
-    stepConfirmModal.confirmAll = function (confirmMessageFx, model) {
-        contentGenerator = generator;
+    stepConfirmModal.confirm = function (confirmMessageFx, itemsToConfirm) {
+        contentGenerator = confirmMessageFx;
 
-        items = _.filter(model, function (item) {
-            return item.confirm;
-        });
+        items = itemsToConfirm;
 
-        $timeout(function () {
-            scope.content = contentGenerator(items[0]);
-        });
-
-        curIx = 0;
+        scope.content = contentGenerator(items[0]);
 
         scope.ui.batchConfirmAll = false;
 
-        deferred = $q.defer();
-
-        parentShow();
+        stepConfirmModal.show();
 
         return deferred.promise;
     };
@@ -980,11 +967,11 @@ controlCenterModule.service('$stepConfirm', function ($timeout, $modal, $rootSco
     return stepConfirmModal;
 });
 
-// 'Save as' popup service.
+// 'Clone' popup service.
 controlCenterModule.service('$copy', function ($modal, $rootScope, $q) {
     var scope = $rootScope.$new();
 
-    var deferred;
+    var deferred = $q.defer();
 
     scope.ok = function (newName) {
         deferred.resolve(newName);
@@ -994,14 +981,10 @@ controlCenterModule.service('$copy', function ($modal, $rootScope, $q) {
 
     var copyModal = $modal({templateUrl: '/clone', scope: scope, placement: 'center', show: false});
 
-    var parentShow = copyModal.show;
-
-    copyModal.show = function (oldName) {
+    copyModal.confirm = function (oldName) {
         scope.newName = oldName + '(1)';
 
-        deferred = $q.defer();
-
-        parentShow();
+        copyModal.show();
 
         return deferred.promise;
     };

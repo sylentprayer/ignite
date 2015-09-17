@@ -345,7 +345,33 @@ controlCenterModule.controller('metadataController', [
                 $loading.start('loadingMetadataFromDb');
 
                 $http.post('metadata/save/batch', batch)
-                    .success(function (saved) {
+                    .success(function (savedBatch) {
+                        var lastItem = undefined;
+                        var newItems = [];
+
+                        _.forEach(savedBatch, function (savedItem) {
+                            var idx = _.findIndex($scope.metadatas, function (meta) {
+                                return meta._id == savedItem._id;
+                            });
+
+                            if (idx >= 0)
+                                $scope.metadatas[idx] = savedItem;
+                            else
+                                newItems.push(savedItem);
+
+                            lastItem = savedItem;
+                        });
+
+                        _.forEach(newItems, function (item) {
+                            $scope.metadatas.push(item);
+                        });
+
+                        if (!lastItem && $scope.metadatas.length > 0)
+                            lastItem = $scope.metadatas[0];
+
+                        $scope.selectItem(lastItem);
+                        $scope.ui.markPristine(1);
+
                         $common.showInfo('Cache type metadata loaded from database.');
                     })
                     .error(function (errMsg) {
@@ -369,7 +395,6 @@ controlCenterModule.controller('metadataController', [
                 var batch = [];
                 var tables = [];
                 var dupCnt = 1;
-                var confirmNeeded = false;
 
                 _.forEach($scope.loadMeta.tables, function (table) {
                     if (table.use) {
@@ -459,8 +484,6 @@ controlCenterModule.controller('metadataController', [
                         };
 
                         if ($common.isDefined(metaFound)) {
-                            confirmNeeded = true;
-
                             meta = metaFound;
                             meta.confirm = true;
                         }
@@ -494,8 +517,12 @@ controlCenterModule.controller('metadataController', [
                         '</span>';
                 }
 
-                if (confirmNeeded)
-                    $stepConfirm.confirmAll(overwriteMessage, batch).then(function () {
+                var itemsToConfirm = _.filter(batch, function (item) {
+                    return item.confirm;
+                });
+
+                if (itemsToConfirm.length > 0)
+                    $stepConfirm.confirm(overwriteMessage, itemsToConfirm).then(function () {
                         _saveBatch(batch);
                     }, function () {
                         $common.showError('Cache type metadata loading interrupted by user.');
@@ -731,7 +758,7 @@ controlCenterModule.controller('metadataController', [
             }
 
             // Save cache type metadata into database.
-            function save(item, quiet) {
+            function save(item) {
                 var qry = $common.metadataForQueryConfigured(item);
                 var str = $common.metadataForStoreConfigured(item);
 
@@ -743,25 +770,24 @@ controlCenterModule.controller('metadataController', [
                     item.kind = 'store';
 
                 $http.post('metadata/save', item)
-                    .success(function (_id) {
+                    .success(function (res) {
                         $scope.ui.markPristine(0);
 
+                        var savedMeta = res[0];
+
                         var idx = _.findIndex($scope.metadatas, function (metadata) {
-                            return metadata._id == _id;
+                            return metadata._id == savedMeta._id;
                         });
 
                         if (idx >= 0)
-                            angular.extend($scope.metadatas[idx], item);
-                        else {
-                            item._id = _id;
+                            $scope.metadatas[idx] = savedMeta;
+                        else
+                            $scope.metadatas.push(savedMeta);
 
-                            $scope.metadatas.push(item);
-                            $scope.selectItem(item);
-                            $scope.ui.markPristine(1);
-                        }
+                        $scope.selectItem(savedMeta);
+                        $scope.ui.markPristine(1);
 
-                        if (!quiet)
-                            $common.showInfo('Cache type metadata"' + item.valueType + '" saved.');
+                        $common.showInfo('Cache type metadata"' + item.valueType + '" saved.');
                     })
                     .error(function (errMsg) {
                         $common.showError(errMsg);
@@ -783,7 +809,7 @@ controlCenterModule.controller('metadataController', [
                 $table.tableReset();
 
                 if (validate($scope.backupItem))
-                    $copy.show($scope.backupItem.valueType).then(function (newName) {
+                    $copy.confirm($scope.backupItem.valueType).then(function (newName) {
                         var item = angular.copy($scope.backupItem);
 
                         item._id = undefined;
@@ -799,7 +825,7 @@ controlCenterModule.controller('metadataController', [
 
                 var selectedItem = $scope.selectedItem;
 
-                $confirm.show('Are you sure you want to remove cache type metadata: "' + selectedItem.valueType + '"?').then(
+                $confirm.confirm('Are you sure you want to remove cache type metadata: "' + selectedItem.valueType + '"?').then(
                     function () {
                         var _id = selectedItem._id;
 
@@ -834,7 +860,7 @@ controlCenterModule.controller('metadataController', [
             $scope.removeAllItems = function () {
                 $table.tableReset();
 
-                $confirm.show('Are you sure you want to remove all metadata?').then(
+                $confirm.confirm('Are you sure you want to remove all metadata?').then(
                     function () {
                         $scope.ui.markPristine(0);
 

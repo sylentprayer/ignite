@@ -37,7 +37,7 @@ controlCenterModule.controller('adminController', ['$scope', '$window', '$http',
     };
 
     $scope.removeUser = function (user) {
-        $confirm.show('Are you sure you want to remove user: "' + user.username + '"?').then(function () {
+        $confirm.confirm('Are you sure you want to remove user: "' + user.username + '"?').then(function () {
             $http.post('admin/remove', {userId: user._id}).success(
                 function () {
                     var i = _.findIndex($scope.users, function (u) {

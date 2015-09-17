@@ -74,44 +74,75 @@ router.post('/list', function (req, res) {
     });
 });
 
-/**
- * Save metadata.
- */
-router.post('/save', function (req, res) {
-    var params = req.body;
-    var metaId = params._id;
-    var caches = params.caches;
+function _save(metas, res) {
+    var total = metas.length;
 
-    if (req.body._id)
-        db.CacheTypeMetadata.update({_id: req.body._id}, req.body, {upsert: true}, function (err) {
-            if (db.processed(err, res))
-                db.Cache.update({_id: {$in: caches}}, {$addToSet: {metadatas: metaId}}, {multi: true}, function (err) {
+    var results = [];
+
+    function saveAll() {
+        if (total > 0) {
+            total--;
+
+            var meta = metas.pop();
+            var metaId = meta._id;
+            var caches = meta.caches;
+
+            if (metaId)
+                db.CacheTypeMetadata.update({_id: meta._id}, meta, {upsert: true}, function (err) {
                     if (db.processed(err, res))
-                        db.Cache.update({_id: {$nin: caches}}, {$pull: {metadatas: metaId}}, {multi: true}, function (err) {
-                            if (db.processed(err, res))
-                                res.send(params._id);
-                        });
-                });
-        });
-    else {
-        db.CacheTypeMetadata.findOne({space: req.body.space, valueType: req.body.valueType}, function (err, metadata) {
-            if (db.processed(err, res)) {
-                if (metadata)
-                    return res.status(500).send('Cache type metadata with value type: "' + metadata.valueType + '" already exist.');
-
-                (new db.CacheTypeMetadata(req.body)).save(function (err, metadata) {
-                    if (db.processed(err, res)) {
-                        metaId = metadata._id;
-
                         db.Cache.update({_id: {$in: caches}}, {$addToSet: {metadatas: metaId}}, {multi: true}, function (err) {
                             if (db.processed(err, res))
-                                res.send(metaId);
+                                db.Cache.update({_id: {$nin: caches}}, {$pull: {metadatas: metaId}}, {multi: true}, function (err) {
+                                    if (db.processed(err, res)) {
+                                        results.push(meta);
+
+                                        saveAll();
+                                    }
+                                });
+                        });
+                });
+            else {
+                db.CacheTypeMetadata.findOne({space: meta.space, valueType: meta.valueType}, function (err, metadata) {
+                    if (db.processed(err, res)) {
+                        if (metadata)
+                            return res.status(500).send('Cache type metadata with value type: "' + metadata.valueType + '" already exist.');
+
+                        (new db.CacheTypeMetadata(meta)).save(function (err, metadata) {
+                            if (db.processed(err, res)) {
+                                metaId = metadata._id;
+
+                                db.Cache.update({_id: {$in: caches}}, {$addToSet: {metadatas: metaId}}, {multi: true}, function (err) {
+                                    if (db.processed(err, res)) {
+                                        results.push(metadata);
+
+                                        saveAll();
+                                    }
+                                });
+                            }
                         });
                     }
                 });
             }
-        });
+        }
+        else
+            res.send(results);
     }
+
+    saveAll();
+}
+
+/**
+ * Save metadata.
+ */
+router.post('/save', function (req, res) {
+    _save([req.body], res);
+});
+
+/**
+ * Batch save metadata .
+ */
+router.post('/save/batch', function (req, res) {
+    _save(req.body, res);
 });
 
 /**

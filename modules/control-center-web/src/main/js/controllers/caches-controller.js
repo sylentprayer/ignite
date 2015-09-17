@@ -500,7 +500,7 @@ controlCenterModule.controller('cachesController', [
                 $table.tableReset();
 
                 if (validate($scope.backupItem))
-                    $copy.show($scope.backupItem.name).then(function (newName) {
+                    $copy.confirm($scope.backupItem.name).then(function (newName) {
                         var item = angular.copy($scope.backupItem);
 
                         item._id = undefined;
@@ -516,7 +516,7 @@ controlCenterModule.controller('cachesController', [
 
                 var selectedItem = $scope.selectedItem;
 
-                $confirm.show('Are you sure you want to remove cache: "' + selectedItem.name + '"?').then(
+                $confirm.confirm('Are you sure you want to remove cache: "' + selectedItem.name + '"?').then(
                     function () {
                         $scope.ui.markPristine(0);
 
@@ -552,7 +552,7 @@ controlCenterModule.controller('cachesController', [
             $scope.removeAllItems = function () {
                 $table.tableReset();
 
-                $confirm.show('Are you sure you want to remove all caches?').then(
+                $confirm.confirm('Are you sure you want to remove all caches?').then(
                     function () {
                         $scope.ui.markPristine(0);
 
