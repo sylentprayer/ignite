@@ -893,83 +893,82 @@ controlCenterModule.service('$stepConfirm', function ($timeout, $modal, $rootSco
 
     scope.ui = {forAll: false};
 
-    var contentGenerator = function () {};
+    var contentGenerator = function () {
+        return 'No content';
+    };
 
-    var stepProcessor = function () {};
+    var itemsToConfirm = [];
 
-    var modelArray;
+    var curIx = 0;
 
-    var curIx = -1;
+    function nextElement(skip) {
+        itemsToConfirm[curIx].skip = skip;
 
-    function nextElement() {
         curIx += 1;
 
-        if (curIx < modelArray.length) {
-            scope.content = contentGenerator(modelArray[curIx]);
+        if (curIx >= modelArray.length) {
+            deferred.resolve();
 
-            return true;
+            stepConfirmModal.hide();
         }
-
-        return false;
     }
 
     /**
      * Generate reject event on cancel for special event processing.
      */
-    scope.cancel = function () {
+    scope.batchConfirmCancel = function () {
         deferred.reject('cancelled');
 
         stepConfirmModal.hide();
     };
 
-    scope.skip = function () {
-        if (scope.ui.forAll || !nextElement()) {
+    scope.batchConfirmSkip = function () {
+        if (scope.ui.batchConfirmAll) {
+            for (var i = curIx; i < itemsToConfirm.length; i++)
+                itemsToConfirm[i].skip = true;
+
             deferred.resolve();
 
             stepConfirmModal.hide();
         }
+        else
+            nextElement(true);
     };
 
-    scope.continue = function () {
-        stepProcessor(modelArray[curIx]);
-
-        if (scope.ui.forAll) {
-            while(nextElement())
-                stepProcessor(modelArray[curIx]);
-        }
-
-        if (!nextElement()) {
+    scope.batchConfirmOverwrite = function () {
+        if (scope.ui.batchConfirmAll) {
             deferred.resolve();
 
             stepConfirmModal.hide();
         }
+        else
+            nextElement(false);
     };
 
-    var stepConfirmModal = $modal({templateUrl: 'metadata/metadata-load-confirm', scope: scope, placement: 'center', show: false});
+    var stepConfirmModal = $modal({templateUrl: '/confirm/batch', scope: scope, placement: 'center', show: false});
 
     var parentShow = stepConfirmModal.show;
 
     /**
-     * Show confirm by steps dialog.
+     * Show confirm all dialog.
      *
-     * @param generator Function to generate a confirm message. first argument is a confirmed element.
-     * @param processor Function to compute a confirmed element.
+     * @param confirmMessageFx Function to generate a confirm message.
      * @param model Array of element to process by confirm.
      */
-    stepConfirmModal.show = function (generator, processor, model) {
-        $timeout(function () {
-            scope.content = contentGenerator(model[0]);
-        });
-
+    stepConfirmModal.confirmAll = function (confirmMessageFx, model) {
         contentGenerator = generator;
 
-        stepProcessor = processor;
+        items = _.filter(model, function (item) {
+            return item.confirm;
+        });
 
-        modelArray = model;
+        $timeout(function () {
+            scope.content = contentGenerator(items[0]);
+        });
 
         curIx = 0;
 
-        scope.ui.forAll = false;
+        scope.ui.batchConfirmAll = false;
 
         deferred = $q.defer();
 

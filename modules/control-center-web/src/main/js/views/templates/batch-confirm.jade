@@ -27,6 +27,6 @@
                     label
                         input(type='checkbox' ng-model='ui.forAll')
                         | Apply to all
-                button.btn.btn-default(id='confirm-btn-cancel' type='button' ng-click='cancel()') Cancel
-                button.btn.btn-default(id='confirm-btn-cancel' type='button' ng-click='skip()') Skip
-                button.btn.btn-primary(id='confirm-btn-confirm' type='button' ng-click='continue()') Overwrite
+                button.btn.btn-default(id='batch-confirm-btn-cancel' type='button' ng-click='batchConfirmCancel()') Cancel
+                button.btn.btn-default(id='batch-confirm-btn-cancel' type='button' ng-click='batchConfirmSkip()') Skip
+                button.btn.btn-primary(id='batch-confirm-btn-overwrite' type='button' ng-click='batchConfirmOverwrite()') Overwrite

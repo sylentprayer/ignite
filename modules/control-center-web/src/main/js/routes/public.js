@@ -38,6 +38,11 @@ router.get('/confirm', function (req, res) {
     res.render('templates/confirm', {});
 });
 
+// GET batch confirmation dialog.
+router.get('/confirm/batch', function (req, res) {
+    res.render('templates/batch-confirm', {});
+});
+
 // GET copy dialog.
 router.get('/copy', function (req, res) {
     res.render('templates/copy', {});

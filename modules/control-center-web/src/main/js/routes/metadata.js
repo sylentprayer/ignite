@@ -23,16 +23,6 @@ router.get('/', function (req, res) {
     res.render('configuration/metadata');
 });
 
-/* GET metadata load dialog. */
-router.get('/metadata-load', function (req, res) {
-    res.render('configuration/metadata-load');
-});
-
-/* GET metadata load confirm dialog. */
-router.get('/metadata-load-confirm', function (req, res) {
-    res.render('configuration/metadata-load-confirm');
-});
-
 /**
  * Get spaces and metadata accessed for user account.
  *
