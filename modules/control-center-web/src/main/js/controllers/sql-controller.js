@@ -76,19 +76,23 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
         };
     }
 
-    $scope.aceInit = function (editor) {
-        editor.setAutoScrollEditorIntoView(true);
-        editor.$blockScrolling = Infinity;
+    $scope.aceInit = function (paragraph) {
+        return function (editor) {
+            editor.setAutoScrollEditorIntoView(true);
+            editor.$blockScrolling = Infinity;
 
-        var renderer = editor.renderer;
+            var renderer = editor.renderer;
 
-        renderer.setHighlightGutterLine(false);
-        renderer.setShowPrintMargin(false);
-        renderer.setOption('fontSize', '14px');
-        renderer.setOption('minLines', '5');
-        renderer.setOption('maxLines', '15');
+            renderer.setHighlightGutterLine(false);
+            renderer.setShowPrintMargin(false);
+            renderer.setOption('fontSize', '14px');
+            renderer.setOption('minLines', '5');
+            renderer.setOption('maxLines', '15');
 
-        editor.setTheme('ace/theme/chrome');
+            editor.setTheme('ace/theme/chrome');
+
+            paragraph.ace = editor;
+        }
     };
 
     var loadNotebook = function () {
@@ -700,8 +704,12 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
             : 'To ' + action + ' query select cache' + (needQuery ? ' and input query' : '');
     };
 
-    $scope.dblclickMetadata = function (node) {
-        console.log(node);
+    $scope.clickableMetadata = function (node) {
+        return node.type.slice(0, 5) != 'index';
+    };
+
+    $scope.dblclickMetadata = function (paragraph, node) {
+        paragraph.ace.insert(node.name);
     };
 
     $scope.tryLoadMetadata = function (cache) {

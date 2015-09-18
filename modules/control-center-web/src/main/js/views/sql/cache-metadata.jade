@@ -17,4 +17,8 @@
     button.close(id='cache-metadata-close' type='button' ng-click='$hide()') &times;
     .popover-content
         treecontrol.tree-classic(tree-model='cache.metadata' options='treeOptions')
-            a(ng-dblclick='dblclickMetadata(node)') {{node.name}}
+            label.clickable(ng-if='node.type == "type"' ng-dblclick='dblclickMetadata(paragraph, node)') {{node.name}}
+            label.clickable(ng-if='node.type == "field"' ng-dblclick='dblclickMetadata(paragraph, node)') {{node.name}} [{{node.clazz}}]
+            label(ng-if='node.type == "indexes"') {{node.name}}
+            label(ng-if='node.type == "index"') {{node.name}}
+            label(ng-if='node.type == "index-field"') {{node.name}} [{{node.order ? 'ASC' : 'DESC'}}]

@@ -157,12 +157,13 @@ router.post('/cache/metadata', function (req, res) {
 
                 for (var fieldName in fields)
                     if (showSystem || fieldName != "_KEY" && fieldName != "_VAL") {
-                        var fieldType = _compact(fields[fieldName]);
+                        var fieldClass = _compact(fields[fieldName]);
 
                         columns.push({
-                            id: typeName + '.' + fieldName,
-                            name: fieldName + ' [' + fieldType + ']',
-                            type: fieldType
+                            type: 'field',
+                            name: fieldName,
+                            fullName: typeName + '.' + fieldName,
+                            clazz: fieldClass
                         });
                     }
 
@@ -172,11 +173,10 @@ router.post('/cache/metadata', function (req, res) {
                     fields = [];
 
                     for (var field of index.fields) {
-                        var order = index.descendings.indexOf(field) < 0 ? 'ASC' : 'DESC';
-
                         fields.push({
-                            id: typeName + '.' + index.name + '.' + field,
-                            name: field + ' ['+ order  +']',
+                            type: 'index-field',
+                            name: field,
+                            fullName: typeName + '.' + index.name + '.' + field,
                             order: index.descendings.indexOf(field) < 0,
                             unique: index.unique
                         });
@@ -184,8 +184,9 @@ router.post('/cache/metadata', function (req, res) {
 
                     if (fields.length > 0)
                         indexes.push({
-                            id: typeName + '.' + index.name,
+                            type: 'index',
                             name: index.name,
+                            fullName: typeName + '.' + index.name,
                             children: fields
                         });
                 }
@@ -193,9 +194,9 @@ router.post('/cache/metadata', function (req, res) {
                 columns = _.sortBy(columns, 'name');
 
                 if (indexes.length > 0)
-                    columns = columns.concat({id: typeName + '.indexes', name: 'Indexes', children: indexes });
+                    columns = columns.concat({type: 'indexes', name: 'Indexes', fullName: typeName + '.indexes', children: indexes });
 
-                return {id: typeName, name: typeName, children: columns };
+                return {type: 'type', name: typeName, fullName: req.body.cacheName + '.' +typeName,  children: columns };
             });
 
             res.json(tables);
