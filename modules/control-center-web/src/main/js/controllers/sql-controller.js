@@ -91,7 +91,7 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
 
             editor.setTheme('ace/theme/chrome');
 
-            paragraph.ace = editor;
+            Object.defineProperty(paragraph, 'ace', { value: editor });
         }
     };
 
@@ -710,6 +710,13 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
 
     $scope.dblclickMetadata = function (paragraph, node) {
         paragraph.ace.insert(node.name);
+        var position = paragraph.ace.selection.getCursor();
+
+        paragraph.query = paragraph.ace.getValue();
+
+        setTimeout(function () {
+            paragraph.ace.selection.moveCursorToPosition(position);
+        }, 1);
     };
 
     $scope.tryLoadMetadata = function (cache) {
