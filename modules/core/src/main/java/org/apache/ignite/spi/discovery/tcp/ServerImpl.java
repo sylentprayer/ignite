@@ -1945,7 +1945,7 @@ class ServerImpl extends TcpDiscoveryImpl {
         /** Pending custom messages that should not be sent between NodeAdded and NodeAddFinished messages. */
         private Queue<TcpDiscoveryCustomEventMessage> pendingCustomMsgs = new LinkedList<>();
 
-        /** Collection to track when a new node starts join process. */
+        /** Collection to track joining nodes. */
         private Set<UUID> joiningNodes = new HashSet<>();
 
         /**
@@ -3555,6 +3555,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     }
                 }
 
+                joiningNodes.remove(leftNode.id());
+
                 spi.stats.onNodeLeft();
 
                 notifyDiscovery(EVT_NODE_LEFT, topVer, leftNode);
@@ -3582,6 +3584,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 U.closeQuiet(sock);
             }
+
+            checkPendingCustomMessages();
         }
 
         /**
@@ -3709,6 +3713,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                         ", msg=" + msg.warning() + ']');
                 }
 
+                joiningNodes.remove(node.id());
+
                 notifyDiscovery(EVT_NODE_FAILED, topVer, node);
 
                 spi.stats.onNodeFailed();
@@ -3722,6 +3728,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 U.closeQuiet(sock);
             }
+
+            checkPendingCustomMessages();
         }
 
         /**
