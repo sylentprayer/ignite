@@ -15,7 +15,7 @@
     limitations under the License.
 
 ul.select.dropdown-menu(tabindex='-1' ng-show='$isVisible()' role='select')
-    li(ng-if='$showAllNoneButtons || ($isMultiple && $matches.length > 5)')
+    li(ng-if='$showAllNoneButtons || ($isMultiple && $matches.length > 2)')
         a(id='li-dropdown-select-all' ng-click='$selectAll()') {{$allText}} ({{$matches.length}})
         a(id='li-dropdown-select-none' ng-click='$selectNone()') {{$noneText}}
         hr(style='margin: 5px 0')
