@@ -34,6 +34,19 @@
     </componentDescriptors>
 
     <files>
+        <!-- Copy CPP files. -->
+        <file>
+            <source>modules/platform/src/main/cpp/project/vs/ignite.slnrel</source>
+            <outputDirectory>/platforms/cpp/src/project/vs</outputDirectory>
+            <destName>ignite.sln</destName>
+        </file>
+
+        <file>
+            <source>modules/platform/src/main/cpp/project/vs/ignite_x86.slnrel</source>
+            <outputDirectory>/platforms/cpp/src/project/vs</outputDirectory>
+            <destName>ignite_x86.sln</destName>
+        </file>
+
         <file>
             <source>assembly/LICENSE_FABRIC</source>
             <destName>LICENSE</destName>
@@ -54,6 +67,39 @@
     </files>
 
     <fileSets>
+        <!-- Move CPP readme. -->
+        <fileSet>
+            <directory>modules/platform/src/main/cpp</directory>
+            <outputDirectory>/platforms/cpp</outputDirectory>
+            <includes>
+                <include>README.txt</include>
+            </includes>
+        </fileSet>
+
+        <!-- Move CPP "common" module. -->
+        <fileSet>
+            <directory>modules/platform/src/main/cpp/common</directory>
+            <outputDirectory>/platforms/cpp/src/common</outputDirectory>
+        </fileSet>
+
+        <!-- Move CPP "core" module. -->
+        <fileSet>
+            <directory>modules/platform/src/main/cpp/core</directory>
+            <outputDirectory>/platforms/cpp/src/core</outputDirectory>
+        </fileSet>
+
+        <!-- Move CPP examples. -->
+        <fileSet>
+            <directory>modules/platform/src/main/cpp/examples</directory>
+            <outputDirectory>/platform/cpp/examples</outputDirectory>
+        </fileSet>
+
+        <!-- Move CPP licenses. -->
+        <fileSet>
+            <directory>modules/platform/src/main/cpp/licenses</directory>
+            <outputDirectory>/platforms/cpp/licenses</outputDirectory>
+        </fileSet>
+
         <fileSet>
             <directory>bin</directory>
             <outputDirectory>/bin</outputDirectory>
