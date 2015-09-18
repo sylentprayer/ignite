@@ -33,7 +33,7 @@ Common Requirements:
 Building the library:
 
  * Build Ignite C++ helper "common" library:
-     * Navigate to the directory $IGNITE_HOME/modules/platform/src/main/cpp/common
+     * Navigate to the directory $IGNITE_HOME/platforms/cpp/src/common
      * Execute the following commands one by one:
          * libtoolize
          * aclocal
@@ -44,7 +44,7 @@ Building the library:
          * make
          * make install
  * Build Ignite C++ library:
-     * Navigate to the directory $IGNITE_HOME/modules/platform/src/main/cpp/core
+     * Navigate to the directory $IGNITE_HOME/platforms/cpp/src/core
      * Execute the following commands one by one:
          * libtoolize
          * aclocal
@@ -82,16 +82,17 @@ Common Requirements:
 
 Building the library:
 
- * Open and build %IGNITE_HOME%\modules\platform\src\main\cpp\project\vs\ignite.sln (or ignite_86.sln if you are running 32-bit platform).
+ * Open and build %IGNITE_HOME%\platforms\cpp\src\project\vs\ignite.sln (or ignite_86.sln if you are running
+   32-bit platform).
 
 Development:
 
  * IGNITE_HOME environment variable must be set to Ignite installation directory.
  * Update Include Directories in Project Properties with paths to:
-   * platforms\cpp\core\include
-   * platforms\cpp\core\os\win\include
-   * platforms\cpp\common\include
-   * platforms\cpp\common\os\win\include
+   * $(IGNITE_HOME)\platforms\cpp\src\core\include
+   * $(IGNITE_HOME)\platforms\cpp\src\core\os\win\include
+   * $(IGNITE_HOME)\platforms\cpp\src\common\include
+   * $(IGNITE_HOME)\platforms\cpp\src\common\os\win\include
    * $(JAVA_HOME)\include
    * $(JAVA_HOME)\include\win32
  * Update Library Directories with path to the built binaries
