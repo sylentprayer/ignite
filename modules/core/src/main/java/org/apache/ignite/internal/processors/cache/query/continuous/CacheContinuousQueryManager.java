@@ -47,6 +47,7 @@ import org.apache.ignite.cache.query.ContinuousQuery;
 import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterTopologyException;
+import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheObject;
 import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
@@ -448,8 +449,23 @@ public class CacheContinuousQueryManager extends GridCacheManagerAdapter {
             taskNameHash,
             skipPrimaryCheck);
 
-        UUID id = cctx.kernalContext().continuous().startRoutine(hnd, bufSize, timeInterval,
-            autoUnsubscribe, grp.predicate()).get();
+        IgniteInternalFuture<UUID> f = cctx.kernalContext().continuous().startRoutine(
+            hnd,
+            bufSize,
+            timeInterval,
+            autoUnsubscribe,
+            grp.predicate());
+
+        while (!f.isDone()) {
+            try {
+                f.get(2000);
+            }
+            catch (Exception e) {
+                U.debug(log, "### Failed to wait for future: " + cctx.gridName() + " " + cctx.nodeId() + " " + f);
+            }
+        }
+
+        UUID id = f.get();
 
         if (notifyExisting) {
             final Iterator<GridCacheEntryEx> it = cctx.cache().allEntries().iterator();
