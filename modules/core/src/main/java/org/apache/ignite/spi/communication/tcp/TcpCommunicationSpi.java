@@ -2700,7 +2700,7 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
      *
      * FOR TEST PURPOSES ONLY!!!
      */
-    void simulateNodeFailure() {
+    public void simulateNodeFailure() {
         if (nioSrvr != null)
             nioSrvr.stop();
 

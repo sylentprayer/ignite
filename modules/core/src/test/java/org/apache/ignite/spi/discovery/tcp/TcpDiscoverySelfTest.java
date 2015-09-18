@@ -55,6 +55,7 @@ import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteInClosure;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.spi.IgniteSpiException;
+import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
 import org.apache.ignite.spi.discovery.DiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
@@ -1178,28 +1179,36 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
      * @throws Exception If failed
      */
     public void testCustomEventRace1_1() throws Exception {
-        customEventRace1(true);
+        customEventRace1(true, false);
     }
 
     /**
      * @throws Exception If failed
      */
     public void testCustomEventRace1_2() throws Exception {
-        customEventRace1(false);
+        customEventRace1(false, false);
+    }
+
+    /**
+     * @throws Exception If failed
+     */
+    public void testCustomEventRace1_3() throws Exception {
+        customEventRace1(true, true);
     }
 
     /**
      * @param cacheStartFrom1 If {code true} starts cache from node1.
+     * @param stopCrd If {@code true} stops coordinator.
      * @throws Exception If failed
      */
-    private void customEventRace1(final boolean cacheStartFrom1) throws Exception {
-        TestFailoverTcpDiscoverySpi spi0 = new TestFailoverTcpDiscoverySpi();
+    private void customEventRace1(final boolean cacheStartFrom1, boolean stopCrd) throws Exception {
+        TestCustomEventRaceSpi spi0 = new TestCustomEventRaceSpi();
 
         nodeSpi = spi0;
 
         final Ignite ignite0 = startGrid(0);
 
-        nodeSpi = new TestFailoverTcpDiscoverySpi();
+        nodeSpi = new TestCustomEventRaceSpi();
 
         final Ignite ignite1 = startGrid(1);
 
@@ -1214,7 +1223,7 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
             @Override public Void call() throws Exception {
                 log.info("Start 2");
 
-                nodeSpi = new TestFailoverTcpDiscoverySpi();
+                nodeSpi = new TestCustomEventRaceSpi();
 
                 Ignite ignite2 = startGrid(2);
 
@@ -1240,9 +1249,18 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
             }
         });
 
-        U.sleep(500);
+        if (stopCrd) {
+            spi0.stop = true;
 
-        latch2.countDown();
+            latch2.countDown();
+
+            ignite0.close();
+        }
+        else {
+            U.sleep(500);
+
+            latch2.countDown();
+        }
 
         fut1.get();
         fut2.get();
@@ -1255,18 +1273,145 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
 
         assertEquals(1, cache.get(1));
 
-        startGrid(3);
+        nodeSpi = new TestCustomEventRaceSpi();
+
+        Ignite ignite = startGrid(3);
+
+        cache = ignite.cache(CACHE_NAME);
+
+        cache.put(2, 2);
+
+        assertEquals(1, cache.get(1));
+        assertEquals(2, cache.get(2));
+    }
+
+    /**
+     * @throws Exception If failed
+     */
+    public void testCustomEventCoordinatorFailure1() throws Exception {
+        customEventCoordinatorFailure(true);
+    }
+
+    /**
+     * @throws Exception If failed
+     */
+    public void testCustomEventCoordinatorFailure2() throws Exception {
+        customEventCoordinatorFailure(false);
+    }
+
+    /**
+     * @param twoNodes If {@code true} starts two nodes, otherwise three.
+     * @throws Exception If failed
+     */
+    private void customEventCoordinatorFailure(boolean twoNodes) throws Exception {
+        TestCustomEventCoordinatorFailureSpi spi0 = new TestCustomEventCoordinatorFailureSpi();
+
+        nodeSpi = spi0;
+
+        Ignite ignite0 = startGrid(0);
+
+        nodeSpi = new TestCustomEventCoordinatorFailureSpi();
+
+        Ignite ignite1 = startGrid(1);
+
+        nodeSpi = new TestCustomEventCoordinatorFailureSpi();
+
+        Ignite ignite2 = twoNodes ? null : startGrid(2);
+
+        final Ignite createCacheNode = ignite2 != null ? ignite2 : ignite1;
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        spi0.latch = latch;
+
+        final String CACHE_NAME = "test-cache";
+
+        IgniteInternalFuture<?> fut = GridTestUtils.runAsync(new Callable<Void>() {
+            @Override public Void call() throws Exception {
+                log.info("Create test cache");
+
+                CacheConfiguration ccfg = new CacheConfiguration();
+
+                ccfg.setName(CACHE_NAME);
+
+                createCacheNode.createCache(ccfg);
+
+                return null;
+            }
+        }, "create-cache-thread");
+
+        ((TcpCommunicationSpi)ignite0.configuration().getCommunicationSpi()).simulateNodeFailure();
+
+        latch.await();
+
+        ignite0.close();
+
+        fut.get();
+
+        IgniteCache<Object, Object> cache = grid(1).cache(CACHE_NAME);
+
+        assertNotNull(cache);
+
+        cache.put(1, 1);
+
+        assertEquals(1, cache.get(1));
+
+        log.info("Try start one more node.");
+
+        nodeSpi = new TestCustomEventCoordinatorFailureSpi();
+
+        Ignite ignite = startGrid(twoNodes ? 2 : 3);
+
+        cache = ignite.cache(CACHE_NAME);
+
+        assertNotNull(cache);
+
+        cache.put(2, 2);
+
+        assertEquals(1, cache.get(1));
+        assertEquals(2, cache.get(2));
     }
 
     /**
      *
      */
-    private static class TestFailoverTcpDiscoverySpi extends TcpDiscoverySpi {
+    private static class TestCustomEventCoordinatorFailureSpi extends TcpDiscoverySpi {
+        /** */
+        private volatile CountDownLatch latch;
+
+        /** */
+        private boolean stop;
+
+        /** {@inheritDoc} */
+        @Override protected void writeToSocket(Socket sock, TcpDiscoveryAbstractMessage msg,
+            GridByteArrayOutputStream bout, long timeout) throws IOException, IgniteCheckedException {
+            if (msg instanceof TcpDiscoveryCustomEventMessage && latch != null) {
+                log.info("Stop node on custom event: " + msg);
+
+                latch.countDown();
+
+                stop = true;
+            }
+
+            if (stop)
+                return;
+
+            super.writeToSocket(sock, msg, bout, timeout);
+        }
+    }
+
+    /**
+     *
+     */
+    private static class TestCustomEventRaceSpi extends TcpDiscoverySpi {
         /** */
         private volatile CountDownLatch nodeAdded1;
 
         /** */
         private volatile CountDownLatch nodeAdded2;
+
+        /** */
+        private volatile boolean stop;
 
         /** */
         private boolean debug;
@@ -1286,6 +1431,9 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
                     nodeAdded1 = null;
                     nodeAdded2 = null;
                 }
+
+                if (stop)
+                    return;
 
                 if (debug)
                     log.info("--- Send node added: " + msg);

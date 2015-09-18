@@ -2485,21 +2485,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                         }
                     }
 
-                    if (msg instanceof TcpDiscoveryStatusCheckMessage) {
-                        TcpDiscoveryStatusCheckMessage msg0 = (TcpDiscoveryStatusCheckMessage)msg;
-
-                        if (next.id().equals(msg0.failedNodeId())) {
-                            next = null;
-
-                            if (log.isDebugEnabled())
-                                log.debug("Discarding status check since next node has indeed failed [next=" + next +
-                                    ", msg=" + msg + ']');
-
-                            // Discard status check message by exiting loop and handle failure.
-                            break;
-                        }
-                    }
-
                     next = null;
 
                     searchNext = true;
@@ -2530,6 +2515,37 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 for (TcpDiscoveryNode n : failedNodes)
                     msgWorker.addMessage(new TcpDiscoveryNodeFailedMessage(locNodeId, n.id(), n.internalOrder()));
+
+                if (!sent) {
+                    if (log.isDebugEnabled())
+                        log.debug("Pending messages will be resent to local node");
+
+                    if (debugMode)
+                        log.debug("Pending messages will be resent to local node");
+
+                    boolean skip = pendingMsgs.discardId != null;
+
+                    for (TcpDiscoveryAbstractMessage pendingMsg : pendingMsgs.msgs) {
+                        if (skip) {
+                            if (pendingMsg.id().equals(pendingMsgs.discardId))
+                                skip = false;
+
+                            continue;
+                        }
+
+                        prepareNodeAddedMessage(pendingMsg, locNodeId, pendingMsgs.msgs, pendingMsgs.discardId);
+
+                        msgWorker.addMessage(pendingMsg);
+
+                        if (log.isDebugEnabled())
+                            log.debug("Pending message has been sent to local node [msg=" + msg.id() +
+                                ", pendingMsgId=" + pendingMsg + ", next=" + next.id() + ']');
+
+                        if (debugMode)
+                            debugLog("Pending message has been sent to local node [msg=" + msg.id() +
+                                ", pendingMsgId=" + pendingMsg + ", next=" + next.id() + ']');
+                    }
+                }
 
                 LT.warn(log, null, "Local node has detected failed nodes and started cluster-wide procedure. " +
                         "To speed up failure detection please see 'Failure Detection' section under javadoc" +

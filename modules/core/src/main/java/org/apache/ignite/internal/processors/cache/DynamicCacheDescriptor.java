@@ -156,6 +156,13 @@ public class DynamicCacheDescriptor {
     }
 
     /**
+     * @return Started flag.
+     */
+    public boolean started() {
+        return started;
+    }
+
+    /**
      * @return Cache configuration.
      */
     public CacheConfiguration cacheConfiguration() {

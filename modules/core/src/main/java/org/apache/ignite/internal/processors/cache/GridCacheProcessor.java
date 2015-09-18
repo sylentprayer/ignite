@@ -1522,10 +1522,15 @@ public class GridCacheProcessor extends GridProcessorAdapter {
      * @return Collection of started cache names.
      */
     public Collection<String> cacheNames() {
-        return F.viewReadOnly(registeredCaches.keySet(),
-            new IgniteClosure<String, String>() {
-                @Override public String apply(String s) {
-                    return unmaskNull(s);
+        return F.viewReadOnly(registeredCaches.values(),
+            new IgniteClosure<DynamicCacheDescriptor, String>() {
+                @Override public String apply(DynamicCacheDescriptor desc) {
+                    return desc.cacheConfiguration().getName();
+                }
+            },
+            new IgnitePredicate<DynamicCacheDescriptor>() {
+                @Override public boolean apply(DynamicCacheDescriptor desc) {
+                    return desc.started();
                 }
             });
     }
