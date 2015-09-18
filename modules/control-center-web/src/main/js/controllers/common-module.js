@@ -611,7 +611,7 @@ controlCenterModule.service('$common', [
             javaBuildInClasses: javaBuildInClasses,
             isJavaBuildInClass: isJavaBuildInClass,
             isValidJavaIdentifier: isValidJavaIdentifier,
-            isValidJavaClass: function (msg, ident, allowBuildInClass, elemId) {
+            isValidJavaClass: function (msg, ident, allowBuildInClass, elemId, packageOnly) {
                 if (isEmptyString(ident))
                     return showPopoverMessage(null, null, elemId, msg + ' could not be empty!');
 
@@ -622,7 +622,7 @@ controlCenterModule.service('$common', [
                 if (!allowBuildInClass && isJavaBuildInClass(ident))
                     return showPopoverMessage(null, null, elemId, msg + ' should not be the Java build-in class!');
 
-                if (len < 2 && !isJavaBuildInClass(ident))
+                if (len < 2 && !isJavaBuildInClass(ident) && !packageOnly)
                     return showPopoverMessage(null, null, elemId, msg + ' does not have package specified!');
 
                 for (var i = 0; i < parts.length; i++) {

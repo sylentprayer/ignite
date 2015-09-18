@@ -192,7 +192,7 @@ controlCenterModule.controller('metadataController', [
             $scope.selectAllSchemas = function () {
                 var allSelected = $scope.loadMeta.allSchemasSelected;
 
-                _.forEach($scope.loadMeta.schemas, function (schema) {
+                _.forEach($scope.loadMeta.displayedSchemas, function (schema) {
                     schema.use = allSelected;
                 });
             };
@@ -204,7 +204,7 @@ controlCenterModule.controller('metadataController', [
             $scope.selectAllTables = function () {
                 var allSelected = $scope.loadMeta.allTablesSelected;
 
-                _.forEach($scope.loadMeta.tables, function (table) {
+                _.forEach($scope.loadMeta.displayedTables, function (table) {
                     table.use = allSelected;
                 });
             };
@@ -389,6 +389,13 @@ controlCenterModule.controller('metadataController', [
             }
 
             function _saveMetadata() {
+                if ($common.isEmptyString($scope.ui.packageName))
+                    return $common.showPopoverMessage(undefined, undefined, 'metadataLoadPackage',
+                        'Package should be not empty');
+
+                if (!$common.isValidJavaClass('Package', $scope.ui.packageName, false, 'metadataLoadPackage', true))
+                    return false;
+
                 $scope.preset.space = $scope.spaces[0];
 
                 $http.post('presets/save', $scope.preset)
@@ -398,7 +405,7 @@ controlCenterModule.controller('metadataController', [
 
                 var batch = [];
                 var tables = [];
-                var dupCnt = 1;
+                var dupCnt = 0;
 
                 _.forEach($scope.loadMeta.tables, function (table) {
                     if (table.use) {
@@ -411,8 +418,10 @@ controlCenterModule.controller('metadataController', [
 
                         var tableName = table.tbl;
 
-                        if (tables.indexOf(table.tbl) >= 0)
-                            tableName += '(' + (dupCnt++) + ')';
+                        var dup = tables.indexOf(tableName) >= 0;
+
+                        if (dup)
+                            dupCnt++;
 
                         var valType = $scope.ui.packageName + '.' + toJavaClassName(tableName);
 
@@ -493,8 +502,10 @@ controlCenterModule.controller('metadataController', [
                             meta.confirm = true;
                         }
 
-                        meta.keyType = valType + 'Key';
-                        meta.valueType = valType;
+                        var dupSfx = (dup ? '_' + dupCnt : '');
+
+                        meta.keyType = valType + 'Key' + dupSfx;
+                        meta.valueType = valType + dupSfx;
                         meta.databaseSchema = table.schema;
                         meta.databaseTable = tableName;
                         meta.queryFields = qryFields;
@@ -505,7 +516,7 @@ controlCenterModule.controller('metadataController', [
                         meta.valueFields = valFields;
 
                         batch.push(meta);
-                        tables.push(table.tbl);
+                        tables.push(tableName);
                     }
                 });
 

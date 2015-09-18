@@ -30,12 +30,12 @@ mixin chk(mdl, change, tip)
                     .settings-row(ng-repeat='field in metadataDb')
                         +form-row-custom(['col-xs-4 col-sm-3 col-md-3'], ['col-xs-8 col-sm-9 col-md-9'], 'preset')
             .metadata-content(ng-show='loadMeta.action == "schemas"')
-                table.table.metadata(st-table='displayedSchemas' st-safe-src='loadMeta.schemas')
+                table.table.metadata(st-table='loadMeta.displayedSchemas' st-safe-src='loadMeta.schemas')
                     thead
                         tr
                             th.header(colspan='2')
                                 .col-sm-4.pull-right
-                                    input.form-control(type='text' st-search='' placeholder='Filter schemas...')
+                                    input.form-control(type='text' st-search='' placeholder='Filter schemas...' ng-model='loadMeta.displayedSchemasFilter' ng-change='selectSchema()')
                         tr
                             th(width='50px')
                                 +chk('loadMeta.allSchemasSelected',  'selectAllSchemas()', 'Select all schemas')
@@ -47,7 +47,7 @@ mixin chk(mdl, change, tip)
                                     .scrollable-y(style='height: 184px')
                                         table.table-modal-striped(id='metadataSchemaData')
                                             tbody
-                                                tr(ng-repeat='schema in displayedSchemas')
+                                                tr(ng-repeat='schema in loadMeta.displayedSchemas')
                                                     td(width='50px')
                                                         input(type='checkbox' ng-model='schema.use' ng-change='selectSchema()')
                                                     td
@@ -56,13 +56,13 @@ mixin chk(mdl, change, tip)
                 .metadata-package-name
                     label.required Package:
                     span
-                        input.form-control(type="text" ng-model='ui.packageName' placeholder='Package for POJOs generation' bs-tooltip='' data-title='Package that will be used for POJOs generation' data-placement='top' data-trigger='hover')
-                table.table.metadata(st-table='displayedTables' st-safe-src='loadMeta.tables')
+                        input.form-control(id='metadataLoadPackage' type="text" ng-model='ui.packageName' placeholder='Package for POJOs generation' bs-tooltip='' data-title='Package that will be used for POJOs generation' data-placement='top' data-trigger='hover')
+                table.table.metadata(st-table='loadMeta.displayedTables' st-safe-src='loadMeta.tables')
                     thead
                         tr
                             th.header(colspan='3')
                                 .col-sm-4.pull-right
-                                    input.form-control(type='text' st-search='' placeholder='Filter tables...')
+                                    input.form-control(type='text' st-search='' placeholder='Filter tables...' ng-model='loadMeta.displayedTablesFilter' ng-change='selectTable()')
                         tr
                             th(width='50px')
                                 +chk('loadMeta.allTablesSelected',  'selectAllTables()', 'Select all tables')
@@ -76,7 +76,7 @@ mixin chk(mdl, change, tip)
                                 .scrollable-y(style='height: 146px')
                                     table.table-modal-striped(id='metadataTableData')
                                         tbody
-                                            tr(ng-repeat='table in displayedTables')
+                                            tr(ng-repeat='table in loadMeta.displayedTables')
                                                 td(width='50px')
                                                     input(type='checkbox' ng-model='table.use' ng-change='selectTable()')
                                                 td(width='200px')

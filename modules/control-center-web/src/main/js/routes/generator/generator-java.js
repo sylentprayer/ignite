@@ -1288,11 +1288,13 @@ $generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
 
         res.startBlock('return \"' + type + ' [' + field.javaName + '=\" + ' + field.javaName + ' +', type);
 
-        _.forEach(fields, function (field) {
+        for (var fldIx = 1; fldIx < fields.length; fldIx ++) {
+            field = fields[fldIx];
+
             var javaName = field.javaName;
 
             res.line('\", ' + javaName + '=\" + ' + field.javaName + ' +');
-        });
+        }
     }
 
     res.line('\']\';');
