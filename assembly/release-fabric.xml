@@ -61,6 +61,12 @@
         </file>
 
         <file>
+            <source>modules/platform/src/main/dotnet/Apache.Ignite/Apache.Ignite.csprojrel</source>
+            <outputDirectory>/platforms/dotnet/src/Apache.Ignite</outputDirectory>
+            <destName>Apache.Ignite.csproj</destName>
+        </file>
+
+        <file>
             <source>modules/platform/src/main/dotnet/Examples/Apache.Ignite.Examples.slnrel</source>
             <outputDirectory>/platforms/dotnet/Examples</outputDirectory>
             <destName>Apache.Ignite.Examples.sln</destName>
@@ -117,6 +123,9 @@
         <fileSet>
             <directory>modules/platform/src/main/dotnet/Apache.Ignite</directory>
             <outputDirectory>/platforms/dotnet/src/Apache.Ignite</outputDirectory>
+            <excludes>
+                <exclude>**/*.csproj*</exclude>
+            </excludes>
         </fileSet>
 
         <!-- Move .Net examples. -->
@@ -124,8 +133,8 @@
             <directory>modules/platform/src/main/dotnet/Examples</directory>
             <outputDirectory>/platforms/dotnet/Examples</outputDirectory>
             <excludes>
-                <exclude>**/*.csproj</exclude>
-                <exclude>**/*.sln</exclude>
+                <exclude>**/*.csproj*</exclude>
+                <exclude>**/*.sln*</exclude>
             </excludes>
         </fileSet>
 
