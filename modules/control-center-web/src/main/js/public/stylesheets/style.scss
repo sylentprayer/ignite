@@ -944,6 +944,10 @@ button.form-control {
         min-width: 300px;
         max-width: 300px;
     }
+
+    label.clickable {
+        cursor: pointer;
+    }
 }
 
 .theme-line .popover.validation-error {
