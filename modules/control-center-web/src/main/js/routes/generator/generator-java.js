@@ -27,32 +27,6 @@ if (typeof window === 'undefined') {
 // Java generation entry point.
 $generatorJava = {};
 
-
-/** Java key words. */
-$generatorJava.javaKeywords = [
-    "abstract",     "assert",        "boolean",      "break",           "byte",
-    "case",         "catch",         "char",         "class",           "const",
-    "continue",     "default",       "do",           "double",          "else",
-    "enum",         "extends",       "false",        "final",           "finally",
-    "float",        "for",           "goto",         "if",              "implements",
-    "import",       "instanceof",    "int",          "interface",       "long",
-    "native",       "new",           "null",         "package",         "private",
-    "protected",    "public",        "return",       "short",           "static",
-    "strictfp",     "super",         "switch",       "synchronized",    "this",
-    "throw",        "throws",        "transient",    "true",            "try",
-    "void",         "volatile",      "while"
-];
-
-$generatorJava.javaBuildInClasses = [
-    'BigDecimal', 'Boolean', 'Byte', 'Date', 'Double', 'Float', 'Integer', 'Long', 'Short', 'String', 'Time', 'Timestamp', 'UUID'
-];
-
-$generatorJava.javaBuildInFullNameClasses = [
-    'java.math.BigDecimal', 'java.lang.Boolean', 'java.lang.Byte', 'java.sql.Date', 'java.lang.Double',
-    'java.lang.Float', 'java.lang.Integer', 'java.lang.Long', 'java.lang.Short', 'java.lang.String',
-    'java.sql.Time', 'java.sql.Timestamp', 'java.util.UUID'
-];
-
 /**
  * Translate some value to valid java code.
  *
@@ -1149,40 +1123,42 @@ $generatorJava.clusterCaches = function (caches, res) {
  * Generate java class code.
  *
  * @param meta Metadata object.
- * @param key {@code true} if key class should be generated.
+ * @param key If 'true' then key class should be generated.
  * @param pkg Package name.
- * @param pkgFolder Folder where to save generated class.
- * @param constructor {@code true} if empty and full constructors should be generated.
- * @param includeKeys {@code true} if key fields should be included into value class.
- * @throws IOException If failed to write generated code into file.
+ * @param constructor If 'true' then empty and full constructors should be generated.
  */
-$generatorJava.javaClassCode = function(meta, key, pkg, constructor, includeKeys) {
-    type = (key ? meta.keyType : meta.valueType);
+$generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
+    if (!res)
+        res = $generatorCommon.builder();
+
+    var type = (key ? meta.keyType : meta.valueType);
     type = type.substring(type.lastIndexOf('.') + 1);
 
-    var res = $generatorCommon.builder();
+    // Class comment.
+    res.line('/**');
+    res.line(' * ' + type + ' definition.');
+    res.line(' *');
+    res.line(' * ' + $generatorCommon.mainComment());
+    res.line(' */');
 
-    $generatorJava.header(res, pkg, 'java.io.*', type, type + ' implements Serializable');
+    res.startBlock('public class ' + type + ' implements ' + res.importClass('java.io.Serializable') + ' {');
 
     res.line('/** */');
     res.line('private static final long serialVersionUID = 0L;');
     res.needEmptyLine = true;
 
-    fields = key ? meta.keyFields : meta.valueFields;
-
-    var field;
+    var fields = key ? meta.keyFields : meta.valueFields;
 
     // Generate fields declaration.
-    for (var fldIx = 0; fldIx < fields.length; fldIx ++) {
-        field = fields[fldIx];
-
-        fldName = field.javaName;
+    _.forEach(fields, function (field) {
+        var fldName = field.javaName;
 
         res.line('/** Value for ' + fldName + '. */');
 
-        res.line('private ' + $generatorJava.javaTypeName(field.javaType) + ' ' + fldName + ';');
+        res.line('private ' + res.importClass(field.javaType) + ' ' + fldName + ';');
+
         res.needEmptyLine = true;
-    }
+    });
 
     // Generate constructors.
     if (constructor) {
@@ -1200,43 +1176,38 @@ $generatorJava.javaClassCode = function(meta, key, pkg, constructor, includeKeys
         res.line(' */');
         res.startBlock('public ' + type + '(');
 
-        for (fldIx = 0; fldIx < fields.length; fldIx ++) {
-            field = fields[fldIx];
-
-            res.append($generatorJava.javaTypeName(field.javaType) + ' ' + field.javaName + (fldIx == fields.length - 1 ? '' : ', '));
-        }
+        res.line(_.map(fields, function (field) {
+            return res.importClass(field.javaType) + ' ' + field.javaName;
+        }).join(',\n'));
 
         res.endBlock(') {');
+
         res.startBlock();
 
-        for (fldIx = 0; fldIx < fields.length; fldIx ++) {
-            field = fields[fldIx];
-
+        _.forEach(fields, function (field) {
             res.line('this.' + field.javaName +' = ' + field.javaName + ';');
-        }
+        });
 
         res.endBlock('}');
+
         res.needEmptyLine = true;
     }
 
     // Generate getters and setters methods.
-    for (fldIx = 0; fldIx < fields.length; fldIx ++) {
-        field = fields[fldIx];
+    _.forEach(fields, function (field) {
+        var fldName = field.javaName;
 
-        fldName = field.javaName;
-
-        fldType = $generatorJava.javaTypeName(field.javaType);
-
-        mtdName = $generatorJava.capitalizeFirst(fldName);
+        var fldType = res.importClass(field.javaType);
 
         res.line('/**');
         res.line(' * Gets ' + fldName + '.');
         res.line(' *');
         res.line(' * @return Value for ' + fldName + '.');
         res.line(' */');
-        res.startBlock('public ' + fldType + ' get' + mtdName + '() {');
+        res.startBlock('public ' + fldType + ' ' + $commonUtils.toJavaName('get', fldName) + '() {');
         res.line('return ' + fldName + ';');
         res.endBlock('}');
+
         res.needEmptyLine = true;
 
         res.line('/**');
@@ -1244,11 +1215,12 @@ $generatorJava.javaClassCode = function(meta, key, pkg, constructor, includeKeys
         res.line(' *');
         res.line(' * @param ' + fldName + ' New value for ' + fldName + '.');
         res.line(' */');
-        res.startBlock('public void set' + mtdName + '(' + fldType + ' ' + fldName + ') {');
+        res.startBlock('public void ' + $commonUtils.toJavaName('set', fldName) + '(' + fldType + ' ' + fldName + ') {');
         res.line('this.' + fldName + ' = ' + fldName + ';');
         res.endBlock('}');
+
         res.needEmptyLine = true;
-    }
+    });
 
     // Generate equals() method.
     res.line('/** {@inheritDoc} */');
@@ -1261,40 +1233,37 @@ $generatorJava.javaClassCode = function(meta, key, pkg, constructor, includeKeys
     res.startBlock('if (!(o instanceof ' + type + '))');
     res.line('return false;');
     res.endBlock();
+
     res.needEmptyLine = true;
 
     res.line(type + ' that = (' + type + ')o;');
 
-    for (fldIx = 0; fldIx < fields.length; fldIx ++) {
-        field = fields[fldIx];
-
+    _.forEach(fields, function (field) {
         res.needEmptyLine = true;
 
-        javaName = field.javaName;
+        var javaName = field.javaName;
 
         res.startBlock('if (' + javaName + ' != null ? !' + javaName + '.equals(that.' + javaName + ') : that.' + javaName + ' != null)');
 
         res.line('return false;');
         res.endBlock()
-    }
+    });
 
     res.needEmptyLine = true;
 
     res.line('return true;');
     res.endBlock('}');
+
     res.needEmptyLine = true;
 
     // Generate hashCode() method.
     res.line('/** {@inheritDoc} */');
     res.startBlock('@Override public int hashCode() {');
 
-    first = true;
-    tempVar = false;
+    var first = true;
 
-    for (fldIx = 0; fldIx < fields.length; fldIx ++) {
-        field = fields[fldIx];
-
-        javaName = field.javaName;
+    _.forEach(fields, function (field) {
+        var javaName = field.javaName;
 
         if (!first)
             res.needEmptyLine = true;
@@ -1303,7 +1272,7 @@ $generatorJava.javaClassCode = function(meta, key, pkg, constructor, includeKeys
             : 'res = 31 * res + (' + javaName + ' != null ? ' + javaName + '.hashCode() : 0);');
 
         first = false;
-    }
+    });
 
     res.needEmptyLine = true;
     res.line('return res;');
@@ -1314,12 +1283,12 @@ $generatorJava.javaClassCode = function(meta, key, pkg, constructor, includeKeys
     res.line('/** {@inheritDoc} */');
     res.startBlock('@Override public String toString() {');
 
-    field = fields[0];
-
     if (fields.length > 0) {
+        var field = fields[0];
+
         res.startBlock('return \"' + type + ' [' + field.javaName + '=\" + ' + field.javaName + ' +', type);
 
-        for (fldIx = 0; fldIx < fields.length; fldIx++) {
+        for (var fldIx = 1; fldIx < fields.length; fldIx ++) {
             field = fields[fldIx];
 
             var javaName = field.javaName;
@@ -1333,20 +1302,16 @@ $generatorJava.javaClassCode = function(meta, key, pkg, constructor, includeKeys
     res.endBlock('}');
 
     res.endBlock('}');
-    res.needEmptyLine = true;
 
-    return res.asString();
+    return 'package ' + pkg + ';' + '\n\n' + res.generateImports() + '\n\n' + res.asString();
 };
 
 /**
  * Generate source code for type by its metadata.
  *
- * @param meta Metadata object.
- * @param constructor {@code true} if empty and full constructors should be generated.
- * @param includeKeys {@code true} if key fields should be included into value class.
- * @throws IOException If failed to write generated code into file.
+ * @param caches TODO.
  */
-$generatorJava.pojos = function (caches, includeKeys) {
+$generatorJava.pojos = function (caches) {
     var metadataNames = [];
 
     $generatorJava.metadatas = [];
@@ -1384,14 +1349,6 @@ $generatorJava.pojos = function (caches, includeKeys) {
 };
 
 /**
- * @param str Source string.
- * @return String with first letters in upper case.
- */
-$generatorJava.capitalizeFirst = function(str) {
-    return str.charAt(0).toUpperCase() + str.substring(1);
-};
-
-/**
  * @param type Full type name.
  * @return Field java type name.
  */
@@ -1401,63 +1358,6 @@ $generatorJava.javaTypeName = function(type) {
     var resType = ix >= 0 ? $generatorJava.javaBuildInFullNameClasses[ix] : type;
 
     return resType.indexOf("java.lang.") >= 0 ? resType.substring(10) : resType;
-};
-
-/**
- * Generate class header.
- *
- * @param pkg Package name.
- * @param imports Optional imports.
- * @param desc Class description.
- * @param cls Class declaration.
- */
-$generatorJava.header = function(res, pkg, imports, desc, cls) {
-    // License.
-    res.line('/*');
-    res.line(' * Licensed to the Apache Software Foundation (ASF) under one or more');
-    res.line(' * contributor license agreements.  See the NOTICE file distributed with');
-    res.line(' * this work for additional information regarding copyright ownership.');
-    res.line(' * The ASF licenses this file to You under the Apache License, Version 2.0');
-    res.line(' * (the \'License\'); you may not use this file except in compliance with');
-    res.line(' * the License.  You may obtain a copy of the License at');
-    res.line(' *');
-    res.line(' *      http://www.apache.org/licenses/LICENSE-2.0');
-    res.line(' *');
-    res.line(' * Unless required by applicable law or agreed to in writing, software');
-    res.line(' * distributed under the License is distributed on an \'AS IS\' BASIS,');
-    res.line(' * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.');
-    res.line(' * See the License for the specific language governing permissions and');
-    res.line(' * limitations under the License.');
-    res.line(' */');
-    res.needEmptyLine = true;
-
-    // Package.
-    res.line('package ' + pkg + ';');
-    res.needEmptyLine = true;
-
-    // Imports.
-    if (imports.length > 0) {
-        var impLst = imports.split(';');
-
-        for (var impIx = 0; impIx < impLst.length; impIx ++) {
-            var imp = impLst[impIx];
-
-            if (imp == '')
-                res.needEmptyLine = true;
-            else
-                res.line('import ' + imp + ';');
-        }
-
-        res.needEmptyLine = true;
-    }
-
-    // Class.
-    res.line('/**');
-    res.line(' * ' + desc + ' definition.');
-    res.line(' *');
-    res.line(' * ' + $generatorCommon.mainComment());
-    res.line(' */');
-    res.startBlock('public class ' + cls + ' {');
 };
 
 /**
