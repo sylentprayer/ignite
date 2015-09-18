@@ -91,7 +91,7 @@
         <!-- Move CPP examples. -->
         <fileSet>
             <directory>modules/platform/src/main/cpp/examples</directory>
-            <outputDirectory>/platform/cpp/examples</outputDirectory>
+            <outputDirectory>/platforms/cpp/examples</outputDirectory>
         </fileSet>
 
         <!-- Move CPP licenses. -->
