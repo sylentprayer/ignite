@@ -159,7 +159,7 @@ router.post('/password/forgot', function(req, res) {
                 'http://' + req.headers.host + '/password/reset/' + token + '\n\n' +
                 'If you did not request this, please ignore this email and your password will remain unchanged.\n\n' +
                 '--------------\n' +
-                'Apache Ignite Web Control Center\n'
+                'Apache Ignite Web Console\n'
             };
 
             mailer.sendMail(mailOptions, function(err){
@@ -212,7 +212,7 @@ router.post('/password/reset', function(req, res) {
                     'This is a confirmation that the password for your account ' + user.email + ' has just been changed.\n\n' +
                     'Now you can login: http://' + req.headers.host + '\n\n' +
                     '--------------\n' +
-                    'Apache Ignite Web Control Center\n'
+                    'Apache Ignite Web Console\n'
                 };
 
                 mailer.sendMail(mailOptions, function (err) {
