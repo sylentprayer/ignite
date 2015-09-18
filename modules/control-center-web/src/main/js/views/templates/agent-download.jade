@@ -37,5 +37,6 @@
                         b README.txt
                         | &nbsp;for more information.
             .modal-footer
-                label.labelField Security token: {{user.token}}
+                label.labelField Security token:
+                label.labelField(bs-tooltip='' data-title='The security token is used for authorization of web agent') {{user.token}}
                 button.btn.btn-primary(ng-click='downloadAgent()') Download zip

@@ -41,7 +41,7 @@ block container
                                 input.form-control(id='profile-email' type='email' ng-model='profileUser.email' placeholder='you@domain.com' required)
                         .details-row
                             +lbl('Security token:')
-                            label {{profileUser.token}}
+                            label(bs-tooltip data-title='The security token is used for authorization of web agent') {{profileUser.token}}
                             i.tipLabel.fa.fa-refresh(ng-click='generateToken()' bs-tooltip data-title='Generate random security token')
                         .details-row
                             .advanced-options
@@ -59,4 +59,3 @@ block container
                                     input.form-control(type='password' ng-model='profileUser.confirmPassword' match='profileUser.newPassword' placeholder='Confirm new password' ng-required='profileUser.changePassword')
                     .col-xs-12.col-sm-12.details-row
                         a.btn.btn-primary(ng-disabled='!profileCouldBeSaved()' ng-click='profileCouldBeSaved() && saveUser()' bs-tooltip='' data-title='{{saveBtnTipText()}}' data-placement='bottom' data-trigger='hover') Save
-

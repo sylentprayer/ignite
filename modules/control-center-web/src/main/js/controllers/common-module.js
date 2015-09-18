@@ -1722,6 +1722,8 @@ controlCenterModule.controller('auth', [
         $scope.resetPassword = function (reset_info) {
             $http.post('/password/reset', reset_info)
                 .success(function (data) {
+                    $common.showInfo('Password successfully changed');
+
                     $scope.user_info = {email: data};
                     $scope.login();
                 })
