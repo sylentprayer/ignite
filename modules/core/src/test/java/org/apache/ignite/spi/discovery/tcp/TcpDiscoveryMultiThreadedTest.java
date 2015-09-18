@@ -265,9 +265,13 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
             IgniteInternalFuture<?> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
                 @Override public Object call() throws Exception {
+                    int idx = startIdx.getAndIncrement();
+
+                    Thread.currentThread().setName("start-thread-" + idx);
+
                     barrier.await();
 
-                    Ignite ignite = startGrid(startIdx.getAndIncrement());
+                    Ignite ignite = startGrid(idx);
 
                     assertFalse(ignite.configuration().isClientMode());
 
