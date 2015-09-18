@@ -78,8 +78,22 @@ router.post('/download', function (req, res) {
             .append($generatorJava.cluster(cluster, false, clientNearConfiguration),
                 {name: cluster.name + '.snippet.java'})
             .append($generatorJava.cluster(cluster, true, clientNearConfiguration),
-                {name: 'ConfigurationFactory.java'})
-            .finalize();
+                {name: 'ConfigurationFactory.java'});
+
+        $generatorJava.pojos(cluster.caches);
+
+        var metadatas = $generatorJava.metadatas;
+
+        for (var metaIx = 0; metaIx < metadatas.length; metaIx ++) {
+            var meta = metadatas[metaIx];
+
+            if (meta.keyClass)
+                zip.append(meta.keyClass, {name: meta.keyType.replace(/\./g, '/') + '.java'});
+
+            zip.append(meta.valueClass, {name: meta.valueType.replace(/\./g, '/') + '.java'});
+        }
+
+        zip.finalize();
     });
 });
 

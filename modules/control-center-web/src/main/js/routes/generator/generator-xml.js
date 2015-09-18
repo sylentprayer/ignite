@@ -392,7 +392,7 @@ $generatorXml.clusterEvents = function (cluster, res) {
         if (cluster.includeEventTypes.length == 1)
             res.line('<util:constant static-field="org.apache.ignite.events.EventType.' + cluster.includeEventTypes[0] + '"/>');
         else {
-            res.startBlock('<array>');
+            res.startBlock('<list>');
 
             for (i = 0; i < cluster.includeEventTypes.length; i++) {
                 if (i > 0)
@@ -409,7 +409,7 @@ $generatorXml.clusterEvents = function (cluster, res) {
                 }
             }
 
-            res.endBlock('</array>');
+            res.endBlock('</list>');
         }
 
         res.endBlock('</property>');
@@ -605,7 +605,7 @@ $generatorXml.cacheQuery = function(cache, res) {
         res.needEmptyLine = true;
     }
 
-    $generatorXml.listProperty(res, cache, 'sqlFunctionClasses', 'array');
+    $generatorXml.listProperty(res, cache, 'sqlFunctionClasses');
 
     $generatorXml.property(res, cache, 'sqlEscapeAll');
 

@@ -74,7 +74,7 @@ router.post('/remove', function (req, res) {
                 subject: 'Your account was deleted',
                 text: 'You are receiving this e-mail because admin remove your account.\n\n' +
                 '--------------\n' +
-                'Apache Ignite Web Control Center http://' + req.headers.host + '\n'
+                'Apache Ignite Web Console http://' + req.headers.host + '\n'
             };
 
             mailer.sendMail(mailOptions, function(err){
