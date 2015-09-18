@@ -28,7 +28,7 @@ controlCenterModule.controller('metadataController', [
             $scope.ui = $common.formUI(1);
 
             $scope.agentGoal = 'load metadata from database schema';
-            $scope.agentTestDriveOption = '--test-metadata';
+            $scope.agentTestDriveOption = '--test-drive-metadata';
 
             $scope.joinTip = $common.joinTip;
             $scope.getModel = $common.getModel;

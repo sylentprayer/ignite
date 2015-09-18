@@ -21,7 +21,7 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
     // Initialize the super class and extend it.
     angular.extend(this, $controller('agent-download', {$scope: $scope}));
     $scope.agentGoal = 'execute sql statements';
-    $scope.agentTestDriveOption = '--test-sql';
+    $scope.agentTestDriveOption = '--test-drive-sql';
 
     $scope.joinTip = $common.joinTip;
 
