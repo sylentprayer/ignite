@@ -87,9 +87,9 @@ block container
                                                 tbody
                                                     tr(ng-repeat='cache in displayedCaches track by cache.name')
                                                         td(style='width: 100%')
-                                                            a(ng-class='{active: cache.name == paragraph.cache.name}' ng-click='paragraph.cache = cache') {{$index + 1}}) {{::cache.name}}
-                                                        //td(style='width: 15px')
-                                                        //    i.fa.fa-info-circle(bs-popover data-template-url='cache-metadata' data-placement='left' data-auto-close='1' data-trigger='click')
+                                                            a(ng-class='{active: cache.name == paragraph.cache.name}' ng-click='paragraph.cache = cache') {{$index + 1}}) {{cache.name}}
+                                                        td(style='width: 15px')
+                                                            i.fa.fa-info-circle(bs-popover data-template-url='cache-metadata', data-placement='left', data-trigger='click')
                                         .empty-caches(ng-show='displayedCaches.length == 0 && caches.length != 0')
                                             label Wrong caches filter
                                         .empty-caches(ng-show='caches.length == 0')

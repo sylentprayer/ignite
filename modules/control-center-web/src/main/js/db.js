@@ -233,7 +233,8 @@ var ClusterSchema = new Schema({
             multicastPort: Number,
             responseWaitTime: Number,
             addressRequestAttempts: Number,
-            localAddress: String
+            localAddress: String,
+            addresses: [String]
         },
         S3: {
             bucketName: String

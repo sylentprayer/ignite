@@ -161,9 +161,15 @@ public class AgentSqlTestDrive {
         ascFlds = new LinkedHashMap<>();
 
         ascFlds.put("employeeId", int.class);
-        ascFlds.put("salary", Double.class);
 
         type.setAscendingFields(ascFlds);
+
+        // Desc fields for EMPLOYEE.
+        Map<String, Class<?>> descFlds = new LinkedHashMap<>();
+
+        descFlds.put("salary", Double.class);
+
+        type.setDescendingFields(descFlds);
 
         // Groups for EMPLOYEE.
         Map<String, LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>>> grps = new LinkedHashMap<>();
@@ -171,7 +177,7 @@ public class AgentSqlTestDrive {
         LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>> grpItems = new LinkedHashMap<>();
 
         grpItems.put("firstName", new IgniteBiTuple<Class<?>, Boolean>(String.class, false));
-        grpItems.put("lastName", new IgniteBiTuple<Class<?>, Boolean>(String.class, false));
+        grpItems.put("lastName", new IgniteBiTuple<Class<?>, Boolean>(String.class, true));
 
         grps.put("EMP_NAMES", grpItems);
 

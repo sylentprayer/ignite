@@ -34,6 +34,10 @@ function _client(req, res) {
     return client;
 }
 
+function _compact(className) {
+    return className.replace('java.lang.', '').replace('java.util.', '').replace('java.sql.', '');
+}
+
 /* Get grid topology. */
 router.get('/download', function (req, res) {
     res.render('templates/agent-download');
@@ -45,13 +49,13 @@ router.post('/topology', function (req, res) {
 
     if (client) {
         client.ignite().cluster().then(function (clusters) {
-            res.json(clusters.map(function (cluster) {
-                var caches = Object.keys(cluster._caches).map(function (key) {
+            var caches = clusters.map(function (cluster) {
+                return Object.keys(cluster._caches).map(function (key) {
                     return {name: key, mode: cluster._caches[key]}
                 });
+            });
 
-                return {nodeId: cluster._nodeId, caches: caches};
-            }));
+            res.json(_.uniq(_.flatten(caches)));
         }, function (err) {
             res.status(500).send(err);
         });
@@ -143,10 +147,58 @@ router.post('/cache/metadata', function (req, res) {
     var client = _client(req, res);
 
     if (client) {
-        var cache = client.ignite().cache(req.body.cacheName);
+        client.ignite().cache(req.body.cacheName).metadata().then(function (meta) {
+            var tables = meta.types.map(function (typeName) {
+                var fields = meta.fields[typeName];
 
-        cache.metadata().then(function (metadata) {
-            res.json(metadata);
+                var showSystem = fields.length == 2 && fields["_KEY"] && fields["_VAL"];
+
+                var columns = [];
+
+                for (var fieldName in fields)
+                    if (showSystem || fieldName != "_KEY" && fieldName != "_VAL") {
+                        var fieldType = _compact(fields[fieldName]);
+
+                        columns.push({
+                            id: typeName + '.' + fieldName,
+                            name: fieldName + ' [' + fieldType + ']',
+                            type: fieldType
+                        });
+                    }
+
+                var indexes = [];
+
+                for (var index of meta.indexes[typeName]) {
+                    fields = [];
+
+                    for (var field of index.fields) {
+                        var order = index.descendings.indexOf(field) < 0 ? 'ASC' : 'DESC';
+
+                        fields.push({
+                            id: typeName + '.' + index.name + '.' + field,
+                            name: field + ' ['+ order  +']',
+                            order: index.descendings.indexOf(field) < 0,
+                            unique: index.unique
+                        });
+                    }
+
+                    if (fields.length > 0)
+                        indexes.push({
+                            id: typeName + '.' + index.name,
+                            name: index.name,
+                            children: fields
+                        });
+                }
+
+                columns = _.sortBy(columns, 'name');
+
+                if (indexes.length > 0)
+                    columns = columns.concat({id: typeName + '.indexes', name: 'Indexes', children: indexes });
+
+                return {id: typeName, name: typeName, children: columns };
+            });
+
+            res.json(tables);
         }, function (err) {
             res.status(500).send(err);
         });

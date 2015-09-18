@@ -217,6 +217,7 @@ $generatorXml.clusterGeneral = function (cluster, res) {
                     $generatorXml.property(res, d.Multicast, 'responseWaitTime');
                     $generatorXml.property(res, d.Multicast, 'addressRequestAttempts');
                     $generatorXml.property(res, d.Multicast, 'localAddress');
+                    $generatorXml.listProperty(res, d.Multicast, 'addresses');
                 }
 
                 res.endBlock('</bean>');

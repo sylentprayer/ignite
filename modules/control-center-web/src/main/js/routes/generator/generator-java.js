@@ -367,7 +367,8 @@ $generatorJava.clusterGeneral = function (cluster, clientNearCfg, res) {
                         multicastPort: null,
                         responseWaitTime: null,
                         addressRequestAttempts: null,
-                        localAddress: null
+                        localAddress: null,
+                        addresses: {type: 'list'}
                     }, true);
 
                 break;

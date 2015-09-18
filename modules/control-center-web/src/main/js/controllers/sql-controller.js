@@ -16,8 +16,8 @@
  */
 
 // Controller for SQL notebook screen.
-controlCenterModule.controller('sqlController', ['$scope', '$window','$controller', '$http', '$timeout', '$common', '$confirm', '$interval',
-    function ($scope, $window, $controller, $http, $timeout, $common, $confirm, $interval) {
+controlCenterModule.controller('sqlController', ['$scope', '$window','$controller', '$http', '$timeout', '$common', '$confirm', '$interval', '$popover', '$loading',
+    function ($scope, $window, $controller, $http, $timeout, $common, $confirm, $interval, $popover, $loading) {
     // Initialize the super class and extend it.
     angular.extend(this, $controller('agent-download', {$scope: $scope}));
     $scope.agentGoal = 'execute sql statements';
@@ -49,16 +49,10 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
 
     $scope.treeOptions = {
         nodeChildren: "children",
-        dirSelectable: false,
+        dirSelectable: true,
         injectClasses: {
-            ul: "a1",
-            li: "a2",
-            liSelected: "a7",
-            iExpanded: "a3",
-            iCollapsed: "a4",
-            iLeaf: "a5",
-            label: "a6",
-            labelSelected: "a8"
+            iExpanded: "fa fa-minus-square-o",
+            iCollapsed: "fa fa-plus-square-o"
         }
     };
 
@@ -66,7 +60,7 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
         return !(col.fieldName === "_KEY") && !(col.fieldName == "_VAL");
     };
 
-    var _allColumn = function (col) {
+    var _allColumn = function () {
         return true;
     };
 
@@ -255,23 +249,12 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
     };
 
     $http.post('/agent/topology')
-        .success(function (nodes) {
-            $scope.caches = [];
-
-            var caches = _.sortBy(nodes[0].caches, 'name');
-
-            caches.map(function (cache) {
-                $scope.caches.push({
-                    "name" : cache.name,
-                    meta: [
-                        {"name" : cache.name, "age" : "33", "children" : []}
-                    ]
-                });
+        .success(function (caches) {
+            _.sortBy(caches, 'name').map(function (cache) {
+                $scope.caches.push(cache);
             })
         })
         .error(function (err, status) {
-            $scope.caches = [];
-
             if (status == 503)
                 $scope.showDownloadAgent();
             else
@@ -716,4 +699,25 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
         return $scope.actionAvailable(paragraph, needQuery) ? undefined
             : 'To ' + action + ' query select cache' + (needQuery ? ' and input query' : '');
     };
+
+    $scope.dblclickMetadata = function (node) {
+        console.log(node);
+    };
+
+    $scope.tryLoadMetadata = function (cache) {
+        if (!cache.metadata) {
+            $loading.start('loadingCacheMetadata');
+
+            $http.post('/agent/cache/metadata', {cacheName: cache.name})
+                .success(function (metadata) {
+                    cache.metadata = metadata;
+                })
+                .error(function (errMsg) {
+                    $common.showError(errMsg);
+                })
+                .finally(function() {
+                    $loading.finish('loadingCacheMetadata');
+                });
+        }
+    }
 }]);
