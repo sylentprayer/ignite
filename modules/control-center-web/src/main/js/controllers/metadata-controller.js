@@ -17,8 +17,8 @@
 
 // Controller for Metadata screen.
 controlCenterModule.controller('metadataController', [
-        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$copy', '$table', '$preview', '$stepConfirm', '$loading',
-        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $copy, $table, $preview, $stepConfirm, $loading) {
+        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$copy', '$table', '$preview', '$loading',
+        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $copy, $table, $preview, $loading) {
             // Initialize the super class and extend it.
             angular.extend(this, $controller('save-remove', {$scope: $scope}));
 
@@ -342,46 +342,50 @@ controlCenterModule.controller('metadataController', [
             $scope.ui.packageName = $scope.user.email.replace('@', '.').split('.').reverse().join('.');
 
             function _saveBatch(batch) {
-                $loading.start('loadingMetadataFromDb');
+                if (batch && batch.length > 0) {
+                    $loading.start('loadingMetadataFromDb');
 
-                $http.post('metadata/save/batch', batch)
-                    .success(function (savedBatch) {
-                        var lastItem = undefined;
-                        var newItems = [];
+                    $http.post('metadata/save/batch', batch)
+                        .success(function (savedBatch) {
+                            var lastItem = undefined;
+                            var newItems = [];
 
-                        _.forEach(savedBatch, function (savedItem) {
-                            var idx = _.findIndex($scope.metadatas, function (meta) {
-                                return meta._id == savedItem._id;
+                            _.forEach(savedBatch, function (savedItem) {
+                                var idx = _.findIndex($scope.metadatas, function (meta) {
+                                    return meta._id == savedItem._id;
+                                });
+
+                                if (idx >= 0)
+                                    $scope.metadatas[idx] = savedItem;
+                                else
+                                    newItems.push(savedItem);
+
+                                lastItem = savedItem;
                             });
 
-                            if (idx >= 0)
-                                $scope.metadatas[idx] = savedItem;
-                            else
-                                newItems.push(savedItem);
+                            _.forEach(newItems, function (item) {
+                                $scope.metadatas.push(item);
+                            });
 
-                            lastItem = savedItem;
+                            if (!lastItem && $scope.metadatas.length > 0)
+                                lastItem = $scope.metadatas[0];
+
+                            $scope.selectItem(lastItem);
+                            $scope.ui.markPristine(1);
+
+                            $common.showInfo('Cache type metadata loaded from database.');
+                        })
+                        .error(function (errMsg) {
+                            $common.showError(errMsg);
+                        })
+                        .finally(function() {
+                            $loading.finish('loadingMetadataFromDb');
+
+                            loadMetaModal.hide();
                         });
-
-                        _.forEach(newItems, function (item) {
-                            $scope.metadatas.push(item);
-                        });
-
-                        if (!lastItem && $scope.metadatas.length > 0)
-                            lastItem = $scope.metadatas[0];
-
-                        $scope.selectItem(lastItem);
-                        $scope.ui.markPristine(1);
-
-                        $common.showInfo('Cache type metadata loaded from database.');
-                    })
-                    .error(function (errMsg) {
-                        $common.showError(errMsg);
-                    })
-                    .finally(function() {
-                        $loading.finish('loadingMetadataFromDb');
-
-                        loadMetaModal.hide();
-                    });
+                }
+                else
+                    loadMetaModal.hide();
             }
 
             function _saveMetadata() {
@@ -484,7 +488,8 @@ controlCenterModule.controller('metadataController', [
                         };
 
                         if ($common.isDefined(metaFound)) {
-                            meta = metaFound;
+                            meta._id = metaFound._id;
+                            meta.caches = metaFound.caches;
                             meta.confirm = true;
                         }
 
@@ -517,13 +522,11 @@ controlCenterModule.controller('metadataController', [
                         '</span>';
                 }
 
-                var itemsToConfirm = _.filter(batch, function (item) {
-                    return item.confirm;
-                });
+                var itemsToConfirm = _.filter(batch, function (item) { return item.confirm; });
 
                 if (itemsToConfirm.length > 0)
-                    $stepConfirm.confirm(overwriteMessage, itemsToConfirm).then(function () {
-                        _saveBatch(batch);
+                    $confirmBatch.confirm(overwriteMessage, itemsToConfirm).then(function () {
+                        _saveBatch(_.filter(batch, function (item) {return !item.skip}));
                     }, function () {
                         $common.showError('Cache type metadata loading interrupted by user.');
                     });

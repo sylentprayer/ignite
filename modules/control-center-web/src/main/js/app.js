@@ -46,6 +46,9 @@ var app = express();
 
 app.use(compress());
 
+app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
+
 // Views engine setup.
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');

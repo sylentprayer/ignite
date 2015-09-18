@@ -857,7 +857,7 @@ controlCenterModule.service('$common', [
 controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
     var scope = $rootScope.$new();
 
-    var deferred = $q.defer();
+    var deferred;
 
     // Configure title of cancel button.
     scope.cancelTitle = 'Cancel';
@@ -873,6 +873,8 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
     confirmModal.confirm = function (content) {
         scope.content = content || 'Confirm deletion?';
 
+        deferred = $q.defer();
+
         confirmModal.show();
 
         return deferred.promise;
@@ -882,20 +884,16 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
 });
 
 // Service for confirm or skip several steps.
-controlCenterModule.service('$stepConfirm', function ($rootScope, $modal,  $q) {
+controlCenterModule.service('$confirmBatch', function ($rootScope, $modal,  $q) {
     var scope = $rootScope.$new();
-
-    scope.ui = {batchConfirmApplyToAll: false};
 
     var contentGenerator = function () {
         return 'No content';
     };
 
-    var items = [];
+    var deferred;
 
-    var curIx = 0;
-
-    var deferred = $q.defer();
+    var stepConfirmModal = $modal({templateUrl: '/confirm/batch', scope: scope, placement: 'center', show: false});
 
     function _done(cancel) {
         if (cancel)
@@ -906,43 +904,48 @@ controlCenterModule.service('$stepConfirm', function ($rootScope, $modal,  $q) {
         stepConfirmModal.hide();
     }
 
+    var items = [];
+    var curIx = 0;
+
     function _nextElement(skip) {
         items[curIx].skip = skip;
 
         curIx++;
 
         if (curIx < items.length)
-            scope.content = contentGenerator(itemsToConfirm = [curIx]);
+            scope.batchConfirm.content = contentGenerator(items[curIx]);
         else
             _done();
     }
 
-    /**
-     * Generate reject event on cancel for special event processing.
-     */
-    scope.batchConfirmCancel = function () {
-        _done(true);
-    };
+    scope.batchConfirm = {
+        applyToAll: false,
+        cancel: function () {
+            _done(true);
+        },
+        skip: function () {
+            if (this.applyToAll) {
+                for (var i = curIx; i < items.length; i++)
+                    items[i].skip = true;
 
-    scope.batchConfirmSkip = function () {
-        if (scope.ui.batchConfirmApplyToAll) {
-            for (var i = curIx; i < itemsToConfirm.length; i++)
-                itemsToConfirm[i].skip = true;
-
-            _done();
+                _done();
+            }
+            else
+                _nextElement(true);
+        },
+        overwrite: function () {
+            if (this.applyToAll)
+                _done();
+            else
+                _nextElement(false);
+        },
+        reset: function (itemsToConfirm) {
+            items = itemsToConfirm;
+            curIx = 0;
+            this.applyToAll = false;
+            this.content = (items && items.length > 0) ? contentGenerator(items[0]) : undefined;
         }
-        else
-            _nextElement(true);
     };
-
-    scope.batchConfirmOverwrite = function () {
-        if (scope.ui.batchConfirmApplyToAll)
-            _done();
-        else
-            _nextElement(false);
-    };
-
-    var stepConfirmModal = $modal({templateUrl: '/confirm/batch', scope: scope, placement: 'center', show: false});
 
     /**
      * Show confirm all dialog.
@@ -953,11 +956,9 @@ controlCenterModule.service('$stepConfirm', function ($rootScope, $modal,  $q) {
     stepConfirmModal.confirm = function (confirmMessageFx, itemsToConfirm) {
         contentGenerator = confirmMessageFx;
 
-        items = itemsToConfirm;
+        scope.batchConfirm.reset(itemsToConfirm);
 
-        scope.content = contentGenerator(items[0]);
-
-        scope.ui.batchConfirmAll = false;
+        deferred = $q.defer();
 
         stepConfirmModal.show();
 
@@ -971,7 +972,7 @@ controlCenterModule.service('$stepConfirm', function ($rootScope, $modal,  $q) {
 controlCenterModule.service('$copy', function ($modal, $rootScope, $q) {
     var scope = $rootScope.$new();
 
-    var deferred = $q.defer();
+    var deferred;
 
     scope.ok = function (newName) {
         deferred.resolve(newName);
@@ -983,6 +984,8 @@ controlCenterModule.service('$copy', function ($modal, $rootScope, $q) {
 
     copyModal.confirm = function (oldName) {
         scope.newName = oldName + '(1)';
+
+        deferred = $q.defer();
 
         copyModal.show();
 
