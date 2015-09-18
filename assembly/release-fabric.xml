@@ -47,6 +47,37 @@
             <destName>ignite_x86.sln</destName>
         </file>
 
+        <!-- Copy .Net files. -->
+        <file>
+            <source>modules/platform/src/main/dotnet/Apache.Ignite.slnrel</source>
+            <outputDirectory>/platforms/dotnet/src</outputDirectory>
+            <destName>Apache.Ignite.sln</destName>
+        </file>
+
+        <file>
+            <source>modules/platform/src/main/dotnet/Apache.Ignite_x86.slnrel</source>
+            <outputDirectory>/platforms/dotnet/src</outputDirectory>
+            <destName>Apache.Ignite_x86.sln</destName>
+        </file>
+
+        <file>
+            <source>modules/platform/src/main/dotnet/Examples/Apache.Ignite.Examples.slnrel</source>
+            <outputDirectory>/platforms/dotnet/Examples</outputDirectory>
+            <destName>Apache.Ignite.Examples.sln</destName>
+        </file>
+
+        <file>
+            <source>modules/platform/src/main/dotnet/Examples/Apache.Ignite.Examples/Apache.Ignite.Examples.csprojrel</source>
+            <outputDirectory>/platforms/dotnet/Examples/Apache.Ignite.Examples</outputDirectory>
+            <destName>Apache.Ignite.Examples.csproj</destName>
+        </file>
+
+        <file>
+            <source>modules/platform/src/main/dotnet/Examples/Apache.Ignite.ExamplesDll/Apache.Ignite.ExamplesDll.csprojrel</source>
+            <outputDirectory>/platforms/dotnet/Examples/Apache.Ignite.ExamplesDll</outputDirectory>
+            <destName>Apache.Ignite.ExamplesDll.csproj</destName>
+        </file>
+
         <file>
             <source>assembly/LICENSE_FABRIC</source>
             <destName>LICENSE</destName>
@@ -67,6 +98,43 @@
     </files>
 
     <fileSets>
+        <!-- Move .Net readme. -->
+        <fileSet>
+            <directory>modules/platform/src/main/dotnet</directory>
+            <outputDirectory>/platforms/dotnet</outputDirectory>
+            <includes>
+                <include>README.txt</include>
+            </includes>
+        </fileSet>
+
+        <!-- Move .Net "core" module. -->
+        <fileSet>
+            <directory>modules/platform/src/main/dotnet/Apache.Ignite.Core</directory>
+            <outputDirectory>/platforms/dotnet/src/Apache.Ignite.Core</outputDirectory>
+        </fileSet>
+
+        <!-- Move .Net executable module. -->
+        <fileSet>
+            <directory>modules/platform/src/main/dotnet/Apache.Ignite</directory>
+            <outputDirectory>/platforms/dotnet/src/Apache.Ignite</outputDirectory>
+        </fileSet>
+
+        <!-- Move .Net examples. -->
+        <fileSet>
+            <directory>modules/platform/src/main/dotnet/Examples</directory>
+            <outputDirectory>/platforms/dotnet/Examples</outputDirectory>
+            <excludes>
+                <exclude>**/*.csproj</exclude>
+                <exclude>**/*.sln</exclude>
+            </excludes>
+        </fileSet>
+
+        <!-- Move .Net licenses. -->
+        <fileSet>
+            <directory>modules/platform/src/main/licenses</directory>
+            <outputDirectory>/platforms/dotnet/licenses</outputDirectory>
+        </fileSet>
+
         <!-- Move CPP readme. -->
         <fileSet>
             <directory>modules/platform/src/main/cpp</directory>
@@ -96,7 +164,7 @@
 
         <!-- Move CPP licenses. -->
         <fileSet>
-            <directory>modules/platform/src/main/cpp/licenses</directory>
+            <directory>modules/platform/src/main/licenses</directory>
             <outputDirectory>/platforms/cpp/licenses</outputDirectory>
         </fileSet>
 
