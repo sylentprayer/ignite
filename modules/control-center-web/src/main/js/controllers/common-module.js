@@ -1422,6 +1422,43 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
     }
 }]);
 
+controlCenterModule.service('ngCopy', ['$window', function ($window) {
+    var body = angular.element($window.document.body);
+
+    var textArea = angular.element('<textarea/>');
+
+    textArea.css({
+        position: 'fixed',
+        opacity: '0'
+    });
+
+    return function (toCopy) {
+        textArea.val(toCopy);
+
+        body.append(textArea);
+
+        textArea[0].select();
+
+        try {
+            if (!document.execCommand('copy'))
+                window.prompt("Copy to clipboard: Ctrl+C, Enter", toCopy);
+        } catch (err) {
+            window.prompt("Copy to clipboard: Ctrl+C, Enter", toCopy);
+        }
+
+        textArea.remove();
+    }
+}]).directive('ngClickCopy', ['ngCopy', function (ngCopy) {
+    return {
+        restrict: 'A',
+        link: function (scope, element, attrs) {
+            element.bind('click', function () {
+                ngCopy(attrs.ngClickCopy);
+            });
+        }
+    }
+}]);
+
 // Filter to decode name using map(value, label).
 controlCenterModule.filter('displayValue', function () {
     return function (v, m, dflt) {
