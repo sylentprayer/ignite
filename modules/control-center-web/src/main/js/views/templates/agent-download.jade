@@ -38,5 +38,5 @@
                         | &nbsp;for more information.
             .modal-footer
                 label.labelField Security token:
-                a.labelField(ng-click-copy='{{user.token}}' bs-tooltip data-title='The security token is used for authorization of web agent.<br/>Click to copy security token to clipboard') {{user.token}}
+                a.labelField(ng-click-copy='{{user.token}}' bs-tooltip='' data-title='The security token is used for authorization of web agent.<br/>Click to copy security token to clipboard' data-placement='bottom') {{user.token}}
                 button.btn.btn-primary(ng-click='downloadAgent()') Download zip
