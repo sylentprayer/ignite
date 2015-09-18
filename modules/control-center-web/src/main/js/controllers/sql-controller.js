@@ -696,7 +696,7 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
     }
 
     $scope.actionAvailable = function (paragraph, needQuery) {
-        return paragraph.cache && (!needQuery || paragraph.query);
+        return $scope.caches.length > 0 && paragraph.cache && (!needQuery || paragraph.query);
     };
 
     $scope.actionTooltip = function (paragraph, action, needQuery) {
