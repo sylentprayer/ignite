@@ -17,23 +17,28 @@
 
 package org.apache.ignite.internal.processors.cache.distributed;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.marshaller.optimized.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.junits.common.*;
-
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 /**
  *
  */
-public class GridCacheAffEarlySelfTest extends GridCommonAbstractTest {
+public class CacheAffinityEarlyTest extends GridCommonAbstractTest {
     /** Grid count. */
     private static int GRID_CNT = 8;
 
@@ -75,28 +80,14 @@ public class GridCacheAffEarlySelfTest extends GridCommonAbstractTest {
     }
 
     /**
-     *
+     * @throws Exception If failed.
      */
     public void testStartNodes() throws Exception {
         for (int i = 0; i < iters; i++) {
             try {
-                System.out.println("*** Iteration " + (i + 1) + '/' + iters);
+                log.info("Iteration: " + (i + 1) + '/' + iters);
 
-                IgniteInternalFuture<?> fut = multithreadedAsync(new Runnable() {
-                    @Override public void run() {
-                        try {
-                            doTest();
-                        }
-                        catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }, 1);
-
-                fut.get(30000);
-            }
-            catch (IgniteFutureTimeoutCheckedException e) {
-                // No-op.
+                doTest();
             }
             finally {
                 stopAllGrids(true);
@@ -105,9 +96,9 @@ public class GridCacheAffEarlySelfTest extends GridCommonAbstractTest {
     }
 
     /**
-     *
+     * @throws Exception If failed.
      */
-    public void doTest() throws Exception {
+    private void doTest() throws Exception {
         final AtomicBoolean failed = new AtomicBoolean();
 
         for (int i = 0; i < GRID_CNT; i++) {
@@ -116,19 +107,19 @@ public class GridCacheAffEarlySelfTest extends GridCommonAbstractTest {
             final Ignite grid = concurrent ? null : startGrid(idx);
 
             IgniteInternalFuture<?> fut = multithreadedAsync(new Runnable() {
-                @Override
-                public void run() {
+                @Override public void run() {
                     Random rnd = new Random();
 
                     try {
                         Ignite ignite = grid == null ? startGrid(idx) : grid;
 
-                        IgniteCache cache = getCache(ignite);
+                        IgniteCache<Object, Object> cache = getCache(ignite);
 
                         cache.put(ignite.cluster().localNode().id(), UUID.randomUUID());
 
                         while (!stopped) {
                             int val = Math.abs(rnd.nextInt(100));
+
                             if (val >= 0 && val < 40)
                                 cache.containsKey(ignite.cluster().localNode().id());
                             else if (val >= 40 && val < 80)
@@ -138,8 +129,9 @@ public class GridCacheAffEarlySelfTest extends GridCommonAbstractTest {
 
                             Thread.sleep(50);
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    }
+                    catch (Exception e) {
+                        log.error("Unexpected error: " + e, e);
 
                         failed.set(true);
                     }
@@ -149,7 +141,7 @@ public class GridCacheAffEarlySelfTest extends GridCommonAbstractTest {
             futs.add(fut);
         }
 
-        Thread.sleep(10000);
+        Thread.sleep(10_000);
 
         stopped = true;
 
@@ -161,6 +153,7 @@ public class GridCacheAffEarlySelfTest extends GridCommonAbstractTest {
 
     /**
      * @param grid Grid.
+     * @return Cache.
      */
     private IgniteCache getCache(Ignite grid) {
         CacheConfiguration ccfg = defaultCacheConfiguration();

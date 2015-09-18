@@ -102,7 +102,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
     /** {@inheritDoc} */
     @Override protected long getTestTimeout() {
-        return 3 * 60 * 1000;
+        return 5 * 60 * 1000;
     }
 
     /**
@@ -249,35 +249,44 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
      * @throws Exception If any error occurs.
      */
     public void testMultipleStartOnCoordinatorStop() throws Exception{
-        clientFlagGlobal = false;
+        for (int k = 0; k < 3; k++) {
+            log.info("Iteration: " + k);
 
-        startGrids(GRID_CNT);
+            clientFlagGlobal = false;
 
-        final CyclicBarrier barrier = new CyclicBarrier(GRID_CNT + 4);
+            final int START_NODES = 5;
+            final int JOIN_NODES = 10;
 
-        final AtomicInteger startIdx = new AtomicInteger(GRID_CNT);
+            startGrids(START_NODES);
 
-        IgniteInternalFuture<?> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
-            @Override public Object call() throws Exception {
-                barrier.await();
+            final CyclicBarrier barrier = new CyclicBarrier(JOIN_NODES + 1);
 
-                Ignite ignite = startGrid(startIdx.getAndIncrement());
+            final AtomicInteger startIdx = new AtomicInteger(START_NODES);
 
-                assertFalse(ignite.configuration().isClientMode());
+            IgniteInternalFuture<?> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
+                @Override public Object call() throws Exception {
+                    barrier.await();
 
-                log.info("Started node: " + ignite.name());
+                    Ignite ignite = startGrid(startIdx.getAndIncrement());
 
-                return null;
-            }
-        }, GRID_CNT + 3, "start-thread");
+                    assertFalse(ignite.configuration().isClientMode());
 
-        barrier.await();
+                    log.info("Started node: " + ignite.name());
 
-        U.sleep(ThreadLocalRandom.current().nextInt(10, 100));
+                    return null;
+                }
+            }, JOIN_NODES, "start-thread");
 
-        for (int i = 0; i < GRID_CNT; i++)
-            stopGrid(i);
+            barrier.await();
 
-        fut.get();
+            U.sleep(ThreadLocalRandom.current().nextInt(10, 100));
+
+            for (int i = 0; i < START_NODES; i++)
+                stopGrid(i);
+
+            fut.get();
+
+            stopAllGrids();
+        }
     }
 }

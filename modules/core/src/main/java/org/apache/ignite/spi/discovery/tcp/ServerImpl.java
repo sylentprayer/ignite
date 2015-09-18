@@ -41,6 +41,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -1944,8 +1945,8 @@ class ServerImpl extends TcpDiscoveryImpl {
         /** Pending custom messages that should not be sent between NodeAdded and NodeAddFinished messages. */
         private Queue<TcpDiscoveryCustomEventMessage> pendingCustomMsgs = new LinkedList<>();
 
-        /** Counter to track when a new node starts join process. */
-        private int joiningNodeCnt;
+        /** Collection to track when a new node starts join process. */
+        private Set<UUID> joiningNodes = new HashSet<>();
 
         /**
          */
@@ -3113,7 +3114,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                     return;
                 }
 
-                joiningNodeCnt++;
+                joiningNodes.add(node.id());
 
                 if (!isLocalNodeCoordinator() && spi.nodeAuth != null && spi.nodeAuth.isGlobalNodeAuthentication()) {
                     boolean authFailed = true;
@@ -3340,7 +3341,7 @@ class ServerImpl extends TcpDiscoveryImpl {
             }
 
             if (msg.verified() && !locNodeId.equals(nodeId) && spiStateCopy() == CONNECTED && fireEvt) {
-                joiningNodeCnt--;
+                joiningNodes.remove(nodeId);
 
                 spi.stats.onNodeJoined();
 
@@ -4099,7 +4100,7 @@ class ServerImpl extends TcpDiscoveryImpl {
          */
         private void processCustomMessage(TcpDiscoveryCustomEventMessage msg) {
             if (isLocalNodeCoordinator()) {
-                if (joiningNodeCnt != 0) {
+                if (!joiningNodes.isEmpty()) {
                     pendingCustomMsgs.add(msg);
 
                     return;
@@ -4162,7 +4163,7 @@ class ServerImpl extends TcpDiscoveryImpl {
          * Checks and flushes custom event messages if no nodes are attempting to join the grid.
          */
         private void checkPendingCustomMessages() {
-            if (joiningNodeCnt == 0 && isLocalNodeCoordinator()) {
+            if (joiningNodes.isEmpty() && isLocalNodeCoordinator()) {
                 TcpDiscoveryCustomEventMessage msg;
 
                 while ((msg = pendingCustomMsgs.poll()) != null)
