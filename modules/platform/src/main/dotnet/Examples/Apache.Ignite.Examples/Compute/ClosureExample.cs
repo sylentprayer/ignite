@@ -34,11 +34,10 @@ namespace Apache.Ignite.Examples.Compute
     /// <para />
     /// This example can be run in conjunction with standalone Apache Ignite .Net node.
     /// To start standalone node please do the following:
-    /// 1) Build the project Apache.Ignite.ExamplesDll if you havent't done it yet (select it -> right-click -> Build);
-    /// 2) Locate created Apache.Ignite.ExamplesDll.dll file (Apache.Ignite.ExamplesDll project -> right-click ->
-    ///     Properties -> Build -> Output path);
-    /// 3) Go to .Net binaries folder [IGNITE_HOME]\platforms\dotnet and run Apache.Ignite.exe as follows:
-    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=modules\platform\src\main\dotnet\examples\config\example-compute.xml -assembly=[path_to_Apache.Ignite.ExamplesDll.dll]
+    /// 1) Build the project Apache.Ignite.ExamplesDll. Apache.Ignite.ExamplesDll.dll must appear in
+    ///     %IGNITE_HOME%/platforms/dotnet/Examples/Apache.Ignite.ExamplesDll/bin/${Platform]/${Configuration} folder.
+    /// 2) Run %IGNITE_HOME%/platforms/dotnet/src/Apache.Ignite/bin/${Platform]/${Configuration}/Apache.Ignite.exe:
+    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=platforms\dotnet\examples\config\example-compute.xml -assembly=[path_to_Apache.Ignite.ExamplesDll.dll]
     /// <para />
     /// As a result you will see console jobs output on one or several nodes.
     /// </summary>
@@ -52,7 +51,7 @@ namespace Apache.Ignite.Examples.Compute
         {
             var cfg = new IgniteConfiguration
             {
-                SpringConfigUrl = @"modules\platform\src\main\dotnet\examples\config\example-compute.xml",
+                SpringConfigUrl = @"platforms\dotnet\examples\config\example-compute.xml",
                 JvmOptions = new List<string> { "-Xms512m", "-Xmx1024m" }
             };
             

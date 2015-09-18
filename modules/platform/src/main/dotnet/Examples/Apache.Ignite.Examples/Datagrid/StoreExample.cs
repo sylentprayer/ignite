@@ -37,7 +37,7 @@ namespace Apache.Ignite.Examples.Datagrid
     /// 1) Build the project Apache.Ignite.ExamplesDll if you havent't done it yet (select it -> right-click -> Build);
     /// 2) Locate created Apache.Ignite.ExamplesDll.dll file (Apache.Ignite.ExamplesDll project -> right-click -> Properties -> Build -> Output path);
     /// 3) Locate Apache.Ignite.exe file (Apache.Ignite project -> right-click -> Properties -> Build -> Output path)
-    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=modules\platform\src\main\dotnet\examples\config\example-cache-store.xml -assembly=[path_to_Apache.Ignite.ExamplesDll.dll]
+    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=platforms\dotnet\examples\config\example-cache-store.xml -assembly=[path_to_Apache.Ignite.ExamplesDll.dll]
     /// </summary>
     class StoreExample
     {
@@ -49,7 +49,7 @@ namespace Apache.Ignite.Examples.Datagrid
         {
             var cfg = new IgniteConfiguration
             {
-                SpringConfigUrl = @"modules\platform\src\main\dotnet\examples\config\example-cache-store.xml",
+                SpringConfigUrl = @"platforms\dotnet\examples\config\example-cache-store.xml",
                 JvmOptions = new List<string> { "-Xms512m", "-Xmx1024m" }
             };
 

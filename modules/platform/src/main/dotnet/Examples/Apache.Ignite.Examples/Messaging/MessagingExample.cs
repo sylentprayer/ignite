@@ -31,7 +31,7 @@ namespace Apache.Ignite.Examples.Messaging
     /// 1) Build the project Apache.Ignite.ExamplesDll if you havent't done it yet (select it -> right-click -> Build);
     /// 2) Locate created Apache.Ignite.ExamplesDll.dll file (Apache.Ignite.ExamplesDll project -> right-click -> Properties -> Build -> Output path);
     /// 3) Locate Apache.Ignite.exe file (Apache.Ignite project -> right-click -> Properties -> Build -> Output path)
-    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=modules\platform\src\main\dotnet\examples\config\example-compute.xml -assembly=[path_to_Apache.Ignite.ExamplesDll.dll]
+    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=platforms\dotnet\examples\config\example-compute.xml -assembly=[path_to_Apache.Ignite.ExamplesDll.dll]
     /// <para />
     /// To run the example please do the following:
     /// 1) Build the project Apache.Ignite.ExamplesDll (select it -> right-click -> Build);
@@ -51,7 +51,7 @@ namespace Apache.Ignite.Examples.Messaging
         {
             var cfg = new IgniteConfiguration
             {
-                SpringConfigUrl = @"modules\platform\src\main\dotnet\examples\config\example-compute.xml",
+                SpringConfigUrl = @"platforms\dotnet\examples\config\example-compute.xml",
                 JvmOptions = new List<string> { "-Xms512m", "-Xmx1024m" }
             };
 

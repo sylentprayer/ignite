@@ -35,7 +35,7 @@ namespace Apache.Ignite.Examples.Datagrid
     /// This example can be run in conjunction with standalone Apache Ignite .Net node.
     /// To start standalone node please do the following:
     /// 1) Locate Apache.Ignite.exe file (Apache.Ignite project -> right-click -> Properties -> Build -> Output path)
-    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=modules\platform\src\main\dotnet\examples\config\example-cache.xml
+    /// Apache.Ignite.exe -IgniteHome=[path_to_IGNITE_HOME] -springConfigUrl=platforms\dotnet\examples\config\example-cache.xml
     /// </summary>
     class TransactionExample
     {
@@ -47,7 +47,7 @@ namespace Apache.Ignite.Examples.Datagrid
         {
             var cfg = new IgniteConfiguration
             {
-                SpringConfigUrl = @"modules\platform\src\main\dotnet\examples\config\example-cache.xml",
+                SpringConfigUrl = @"platforms\dotnet\examples\config\example-cache.xml",
                 JvmOptions = new List<string> { "-Xms512m", "-Xmx1024m" }
             };
 
