@@ -1941,6 +1941,12 @@ class ServerImpl extends TcpDiscoveryImpl {
         /** Connection check threshold. */
         private long connCheckThreshold;
 
+        /** Pending custom messages that should not be sent between NodeAdded and NodeAddFinished messages. */
+        private Queue<TcpDiscoveryCustomEventMessage> pendingCustomMsgs = new LinkedList<>();
+
+        /** Counter to track when a new node starts join process. */
+        private int joiningNodeCnt;
+
         /**
          */
         protected RingMessageWorker() {
@@ -3107,6 +3113,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     return;
                 }
 
+                joiningNodeCnt++;
+
                 if (!isLocalNodeCoordinator() && spi.nodeAuth != null && spi.nodeAuth.isGlobalNodeAuthentication()) {
                     boolean authFailed = true;
 
@@ -3332,6 +3340,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             }
 
             if (msg.verified() && !locNodeId.equals(nodeId) && spiStateCopy() == CONNECTED && fireEvt) {
+                joiningNodeCnt--;
+
                 spi.stats.onNodeJoined();
 
                 // Make sure that node with greater order will never get EVT_NODE_JOINED
@@ -3391,6 +3401,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
             if (ring.hasRemoteNodes())
                 sendMessageAcrossRing(msg);
+
+            checkPendingCustomMessages();
         }
 
         /**
@@ -4087,6 +4099,12 @@ class ServerImpl extends TcpDiscoveryImpl {
          */
         private void processCustomMessage(TcpDiscoveryCustomEventMessage msg) {
             if (isLocalNodeCoordinator()) {
+                if (joiningNodeCnt != 0) {
+                    pendingCustomMsgs.add(msg);
+
+                    return;
+                }
+
                 boolean sndNext;
 
                 if (!msg.verified()) {
@@ -4137,6 +4155,18 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 if (ring.hasRemoteNodes())
                     sendMessageAcrossRing(msg);
+            }
+        }
+
+        /**
+         * Checks and flushes custom event messages if no nodes are attempting to join the grid.
+         */
+        private void checkPendingCustomMessages() {
+            if (joiningNodeCnt == 0 && isLocalNodeCoordinator()) {
+                TcpDiscoveryCustomEventMessage msg;
+
+                while ((msg = pendingCustomMsgs.poll()) != null)
+                    processCustomMessage(msg);
             }
         }
 
