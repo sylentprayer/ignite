@@ -1,6 +1,6 @@
 {
   "screenTip": {
-    "workflowTitle": "What's now:",
+    "workflowTitle": "On This Screen:",
     "workflowContent": [
       "<ul>",
       "  <li>Download XML Config</li>",
@@ -8,7 +8,7 @@
       "  <li>Download Docker File</li>",
       "</ul>"
     ],
-    "whatsNextTitle": "What's next:",
+    "whatsNextTitle": "Next Steps:",
     "whatsNextContent": [
       "<ul>",
       "  <li>Deploy Ignite Servers</li>",

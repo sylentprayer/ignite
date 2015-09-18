@@ -1,6 +1,6 @@
 {
   "screenTip": {
-    "workflowTitle": "What's now:",
+    "workflowTitle": "On This Screen:",
     "workflowContent": [
       "<ul>",
       "  <li>Configure Caches</li>",
@@ -8,7 +8,7 @@
       "  <li>Link Caches to Clusters</li>",
       "</ul>"
     ],
-    "whatsNextTitle": "What's next:",
+    "whatsNextTitle": "Next Steps:",
     "whatsNextContent": [
       "<ul>",
       "  <li>Continue to <a href='/configuration/metadata'>Metadata</a></li>",

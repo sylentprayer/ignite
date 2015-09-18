@@ -1,13 +1,13 @@
 {
   "screenTip": {
-    "workflowTitle": "What's now:",
+    "workflowTitle": "On This Screen:",
     "workflowContent": [
       "<ul>",
       "  <li>Manually enter Metadata</li>",
       "  <li>Load Metadata from Database</li>",
       "</ul><br/>"
     ],
-    "whatsNextTitle": "What's next:",
+    "whatsNextTitle": "Next Steps:",
     "whatsNextContent": [
       "<ul>",
       "  <li>Continue to <a href='/configuration/summary'>Summary</a></li>",
