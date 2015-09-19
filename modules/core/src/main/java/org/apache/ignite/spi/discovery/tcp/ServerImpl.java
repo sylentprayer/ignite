@@ -1880,15 +1880,6 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
 
         /**
-         * Clears pending messages.
-         */
-        void clear() {
-            msgs.clear();
-
-            discardId = null;
-        }
-
-        /**
          * Discards message with provided ID and all before it.
          *
          * @param id Discarded message ID.
@@ -1943,7 +1934,7 @@ class ServerImpl extends TcpDiscoveryImpl {
         private long connCheckThreshold;
 
         /** Pending custom messages that should not be sent between NodeAdded and NodeAddFinished messages. */
-        private Queue<TcpDiscoveryCustomEventMessage> pendingCustomMsgs = new LinkedList<>();
+        private Queue<TcpDiscoveryCustomEventMessage> pendingCustomMsgs = new ArrayDeque<>();
 
         /** Collection to track joining nodes. */
         private Set<UUID> joiningNodes = new HashSet<>();
@@ -2053,6 +2044,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             sendHeartbeatMessage();
 
             checkHeartbeatsReceiving();
+
+            checkPendingCustomMessages();
         }
 
         /**
@@ -2337,7 +2330,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         if (pendingMsg.id().equals(pendingMsgs.discardId))
                                             skip = false;
 
-                                        continue;
+                                        if (!(pendingMsg instanceof TcpDiscoveryCustomEventMessage))
+                                            continue;
                                     }
 
                                     long tstamp = U.currentTimeMillis();
@@ -2361,13 +2355,13 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     int res = spi.readReceipt(sock, timeoutHelper.nextTimeoutChunk(ackTimeout0));
 
                                     if (log.isDebugEnabled())
-                                        log.debug("Pending message has been sent to next node [msg=" + msg.id() +
-                                            ", pendingMsgId=" + pendingMsg + ", next=" + next.id() +
+                                        log.debug("Pending message has been sent to next node [msgId=" + msg.id() +
+                                            ", pendingMsgId=" + pendingMsg.id() + ", next=" + next.id() +
                                             ", res=" + res + ']');
 
                                     if (debugMode)
-                                        debugLog("Pending message has been sent to next node [msg=" + msg.id() +
-                                            ", pendingMsgId=" + pendingMsg + ", next=" + next.id() +
+                                        debugLog("Pending message has been sent to next node [msgId=" + msg.id() +
+                                            ", pendingMsgId=" + pendingMsg.id() + ", next=" + next.id() +
                                             ", res=" + res + ']');
 
                                     // Resetting timeout control object to create a new one for the next bunch of
@@ -3236,6 +3230,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 n.visible(true);
                             }
 
+                            joiningNodes.clear();
+
                             locNode.setAttributes(node.attributes());
 
                             locNode.visible(true);
@@ -3251,7 +3247,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                             topHist.clear();
                             topHist.putAll(msg.topologyHistory());
 
-                            pendingMsgs.discard(msg.discardedMessageId());
+                            pendingMsgs.reset(msg.messages(), msg.discardedMessageId());
 
                             // Clear data to minimize message size.
                             msg.messages(null, null);
@@ -4175,8 +4171,19 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
             }
             else {
-                if (msg.verified())
+                TcpDiscoverySpiState state0;
+
+                synchronized (mux) {
+                    state0 = spiState;
+                }
+
+                assert !(msg.verified() && state0 == CONNECTING);
+
+                if (msg.verified() && state0 == CONNECTED) {
+                    assert joiningNodes.isEmpty() : "Joining nodes: " + joiningNodes;
+
                     notifyDiscoveryListener(msg);
+                }
 
                 if (ring.hasRemoteNodes())
                     sendMessageAcrossRing(msg);
