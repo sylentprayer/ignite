@@ -64,7 +64,6 @@ import org.apache.ignite.internal.IgniteFutureTimeoutCheckedException;
 import org.apache.ignite.internal.IgniteInterruptedCheckedException;
 import org.apache.ignite.internal.IgniteNodeAttributes;
 import org.apache.ignite.internal.events.DiscoveryCustomEvent;
-import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
 import org.apache.ignite.internal.processors.security.SecurityContext;
 import org.apache.ignite.internal.util.GridConcurrentHashSet;
 import org.apache.ignite.internal.util.IgniteUtils;
@@ -1865,9 +1864,6 @@ class ServerImpl extends TcpDiscoveryImpl {
             while (msgs.size() > MAX) {
                 TcpDiscoveryAbstractMessage polled = msgs.poll();
 
-                if (polled instanceof DiscoveryCustomMessage)
-                    U.debug("### Discarded custom message ###: " + msg);
-
                 assert polled != null;
 
                 if (polled.id().equals(discardId))
@@ -2315,10 +2311,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     log.debug("Pending messages will be sent [failure=" + failure +
                                         ", forceSndPending=" + forceSndPending + ']');
 
-                                U.debug(
-                                    "### Pending messages will be sent [failure=" + failure +
-                                        ", forceSndPending=" + forceSndPending + ']');
-
                                 if (debugMode)
                                     debugLog("Pending messages will be sent [failure=" + failure +
                                         ", forceSndPending=" + forceSndPending + ']');
@@ -2330,13 +2322,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         if (pendingMsg.id().equals(pendingMsgs.discardId))
                                             skip = false;
 
-                                        if (!(msg instanceof DiscoveryCustomMessage))
+                                        if (!(pendingMsg instanceof TcpDiscoveryCustomEventMessage))
                                             continue;
-                                        else
-                                            U.debug(log, "Avoid skipping custom message: " + pendingMsg);
                                     }
-
-                                    U.debug(log, "Sending pending: " + pendingMsg);
 
                                     long tstamp = U.currentTimeMillis();
 
@@ -2360,11 +2348,6 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                                     if (log.isDebugEnabled())
                                         log.debug("Pending message has been sent to next node [msgId=" + msg.id() +
-                                            ", pendingMsgId=" + pendingMsg.id() + ", next=" + next.id() +
-                                            ", res=" + res + ']');
-
-                                    if (msg instanceof TcpDiscoveryCustomEventMessage)
-                                        U.debug(log, "Pending message has been sent to next node [msgId=" + msg.id() +
                                             ", pendingMsgId=" + pendingMsg.id() + ", next=" + next.id() +
                                             ", res=" + res + ']');
 
@@ -3263,6 +3246,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                             topHist.clear();
                             topHist.putAll(msg.topologyHistory());
 
+                            pendingMsgs.msgs.clear();
+                            pendingMsgs.msgs.addAll(msg.messages());
                             pendingMsgs.discard(msg.discardedMessageId());
 
                             // Clear data to minimize message size.
@@ -4197,10 +4182,16 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
             }
             else {
-                if (msg.verified()) {
-                    assert joiningNodes.isEmpty();
+                TcpDiscoverySpiState state0;
 
-                    U.debug(log, "Processing custom message: " + msg);
+                synchronized (mux) {
+                    state0 = spiState;
+                }
+
+                assert !(msg.verified() && state0 == CONNECTING);
+
+                if (msg.verified() && state0 == CONNECTED) {
+                    assert joiningNodes.isEmpty() : "Joining nodes: " + joiningNodes;
 
                     notifyDiscoveryListener(msg);
                 }
@@ -4210,21 +4201,10 @@ class ServerImpl extends TcpDiscoveryImpl {
             }
         }
 
-        long lastCheck = U.currentTimeMillis();
-
         /**
          * Checks and flushes custom event messages if no nodes are attempting to join the grid.
          */
         private void checkPendingCustomMessages() {
-            if (lastCheck + 2000 < U.currentTimeMillis()) {
-                U.debug(
-                    log,
-                    "Custom messages [msgs=" + pendingCustomMsgs.size() + ", locNodeId=" + locNode.id() +
-                        ", locNodeOrder=" + locNode.order() + ", joining=" + joiningNodes + ']');
-
-                lastCheck = U.currentTimeMillis();
-            }
-
             if (joiningNodes.isEmpty() && isLocalNodeCoordinator()) {
                 TcpDiscoveryCustomEventMessage msg;
 
